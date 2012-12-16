@@ -1,28 +1,5 @@
 
-var KEYWORDS = [
-    "AND",
-    "OR",
-    "IN",
-    "NOT",
-    "RETURN",
-    "IF",
-    "ELSE",
-    "WHILE",
-    "FOR",
-    "CONTINUE",
-    "BREAK",
-    "CLASS",
-    "NULL",
-    "THIS",
-    "TRUE",
-    "FALSE",
-    "DIGIT",
-    "IDENT",
-    "COMMENT",
-    "EOF",
-    "END_LIST"
-];
-
+// Operators
 var LPAREN = "(";
 var RPAREN = ")";
 var LBRACKET = "[";
@@ -48,111 +25,61 @@ var EQUAL = "=";
 var NOT_EQUALE = "!=";
 var LESS_EQUALE = "<=";
 var GREAT_EQUALE = ">=";
-var SINGLE_QUOT = "'";
-var DOUBLE_QUOT = "\"";
 var LESS = "<";
 var GREAT = ">";
 var ASSIGN = "=";
-var ERROR = "ERROR";
+
+// Keywords
+var AND = "AND";
+var OR = "OR";
+var XOR = "XOR";
+var IN = "IN";
+var IS = "IS";
+var NOT = "NOT";
+var RETURN = "RETURN";
+var IF = "IF";
+var ELSE = "ELSE";
+var WHILE = "WHILE";
+var FOR = "FOR";
+var CONTINUE = "CONTINUE";
+var BREAK = "BREAK";
+var CLASS = "CLASS";
+var NULL = "NULL";
+var THIS = "THIS";
+var TRUE = "TRUE";
+var FALSE = "FALSE";
+
+// Literals
+var IDENT = "IDENT";
 var LETTER = "LETTER";
 var DIGIT = "DIGIT";
 var STRING = "STRING";
-var IDENT = "IDENT";
+var NEWLINE = "NEWLINE";
+var END_OF_FILE = "END_OF_FILE";
+var SNG_QUOT = "'";
+var DBL_QUOT = "\"";
 
-var TokenKind = [];
-TokenKind[LPAREN] = LPAREN;
-TokenKind[RPAREN] = RPAREN;
-TokenKind[LBRACKET] = LBRACKET;
-TokenKind[RBRACKET] = RBRACKET;
-TokenKind[LBRACE] = LBRACE;
-TokenKind[RBRACE] = RBRACE;
-TokenKind[COMMA] = COMMA;
-TokenKind[SEMICOLON] = SEMICOLON;
-TokenKind[DOT] = DOT;
-TokenKind[INC] = INC;
-TokenKind[DEC] = DEC;
-TokenKind[ADD_ASSIGN] = ADD_ASSIGN;
-TokenKind[SUB_ASSIGN] = SUB_ASSIGN;
-TokenKind[MUL_ASSIGN] = MUL_ASSIGN;
-TokenKind[DIV_ASSIGN] = DIV_ASSIGN;
-TokenKind[MOD_ASSIGN] = MOD_ASSIGN;
-TokenKind[ADD] = ADD;
-TokenKind[SUB] = SUB;
-TokenKind[MUL] = MUL;
-TokenKind[DIV] = DIV;
-TokenKind[MOD] = MOD;
-TokenKind[EQUAL] = EQUAL;
-TokenKind[NOT_EQUALE] = NOT_EQUALE;
-TokenKind[LESS_EQUALE] = LESS_EQUALE;
-TokenKind[GREAT_EQUALE] = GREAT_EQUALE;
-TokenKind[SINGLE_QUOT] = SINGLE_QUOT;
-TokenKind[DOUBLE_QUOT] = DOUBLE_QUOT;
-TokenKind[LESS] = LESS;
-TokenKind[GREAT] = GREAT;
-TokenKind[ASSIGN] = ASSIGN;
-TokenKind['_'] = LETTER;
-TokenKind['a'] = LETTER;
-TokenKind['b'] = LETTER;
-TokenKind['c'] = LETTER;
-TokenKind['d'] = LETTER;
-TokenKind['e'] = LETTER;
-TokenKind['f'] = LETTER;
-TokenKind['g'] = LETTER;
-TokenKind['h'] = LETTER;
-TokenKind['i'] = LETTER;
-TokenKind['j'] = LETTER;
-TokenKind['k'] = LETTER;
-TokenKind['l'] = LETTER;
-TokenKind['m'] = LETTER;
-TokenKind['n'] = LETTER;
-TokenKind['o'] = LETTER;
-TokenKind['p'] = LETTER;
-TokenKind['q'] = LETTER;
-TokenKind['r'] = LETTER;
-TokenKind['s'] = LETTER;
-TokenKind['t'] = LETTER;
-TokenKind['u'] = LETTER;
-TokenKind['v'] = LETTER;
-TokenKind['w'] = LETTER;
-TokenKind['x'] = LETTER;
-TokenKind['y'] = LETTER;
-TokenKind['z'] = LETTER;
-TokenKind['A'] = LETTER;
-TokenKind['B'] = LETTER;
-TokenKind['C'] = LETTER;
-TokenKind['D'] = LETTER;
-TokenKind['E'] = LETTER;
-TokenKind['F'] = LETTER;
-TokenKind['G'] = LETTER;
-TokenKind['H'] = LETTER;
-TokenKind['I'] = LETTER;
-TokenKind['J'] = LETTER;
-TokenKind['K'] = LETTER;
-TokenKind['L'] = LETTER;
-TokenKind['M'] = LETTER;
-TokenKind['N'] = LETTER;
-TokenKind['O'] = LETTER;
-TokenKind['P'] = LETTER;
-TokenKind['Q'] = LETTER;
-TokenKind['R'] = LETTER;
-TokenKind['S'] = LETTER;
-TokenKind['T'] = LETTER;
-TokenKind['U'] = LETTER;
-TokenKind['V'] = LETTER;
-TokenKind['W'] = LETTER;
-TokenKind['X'] = LETTER;
-TokenKind['Y'] = LETTER;
-TokenKind['Z'] = LETTER;
-TokenKind['0'] = DIGIT;
-TokenKind['1'] = DIGIT;
-TokenKind['2'] = DIGIT;
-TokenKind['3'] = DIGIT;
-TokenKind['4'] = DIGIT;
-TokenKind['5'] = DIGIT;
-TokenKind['6'] = DIGIT;
-TokenKind['7'] = DIGIT;
-TokenKind['8'] = DIGIT;
-TokenKind['9'] = DIGIT;
+
+var Keywords = [];
+
+[AND, OR, XOR, IN, IS, NOT, RETURN, IF, ELSE, WHILE, FOR, CONTINUE, BREAK, CLASS, NULL, THIS, TRUE, FALSE].forEach(function(c) {
+    Keywords[c] = c;
+});
+
+var chars = [];
+
+['_', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ].forEach (function(c) {
+    chars[c] = LETTER;
+});
+
+['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'].forEach (function(c) {
+    chars[c] = DIGIT;
+});
+
+var ops = {'(': 'LPAREN', ')': 'RPAREN', '[': 'LBRACKET', ']': 'RBRACKET', '{': 'LBRACE', '}': 'RBRACE', ',': 'COMMA', ';': 'SEMICOLON', '.': 'DOT', '+': 'ADD', '-': 'SUB', '*': 'MUL', '/': 'DIV', '%': 'MOD', '=': 'EQUAL', '\'': 'SNG_QUOT', '"': 'DBL_QUOT', '<': 'LESS', '>': 'GREAT', '=': 'ASSIGN'};
+for (var c in ops) {
+    chars[c] = ops[c];
+}
 
 var Location = function(line) {
     this.line = line;
@@ -188,6 +115,7 @@ Tokenizer.prototype.tokenize = function() {
         var c = this.nextChar();
         
         if (c == '\n') {
+            tokens.push(new Token(new Location(line), NEWLINE, c));
             line++;
         }
         
@@ -195,62 +123,64 @@ Tokenizer.prototype.tokenize = function() {
             continue;
         }
         
-        switch (TokenKind[c]) {
+        switch (chars[c]) {
             case LETTER:
                 var token = new Token(new Location(line), IDENT, c);
-                for (var c = this.nextChar(); TokenKind[c] == LETTER; c = this.nextChar()) {
+                for (var c = this.nextChar(); chars[c] == LETTER; c = this.nextChar()) {
                     token.append(c);
                 }
-                for (var i in KEYWORDS) {
-                    if (KEYWORDS[i] == token.text.toUpperCase()) {
-                        token.kind = token.text.toUpperCase();
-                    }
+                if (Keywords[token.text.toUpperCase()]) {
+                    token.kind = token.text.toUpperCase();
                 }
                 this.index--;
+                tokens.push(token);
                 break;
             case DIGIT:
                 var token = new Token(new Location(line), DIGIT, c);
-                for (var c = this.nextChar(); TokenKind[c] == DIGIT; c = this.nextChar()) {
+                for (var c = this.nextChar(); chars[c] == DIGIT; c = this.nextChar()) {
                     token.append(c);
                 }
                 this.index--;
+                tokens.push(token);
                 break;
-            case SINGLE_QUOT:
+            case SNG_QUOT:
                 var token = new Token(new Location(line), STRING, '');
-                for (var c = this.nextChar(); TokenKind[c] != SINGLE_QUOT && c != '\n'; c = this.nextChar()) {
+                for (var c = this.nextChar(); chars[c] != SNG_QUOT && c != '\n'; c = this.nextChar()) {
                     token.append(c);
                 }
                 if (c == '\n') {
                     this.log.error(new Location(line), 'closing single quotation is missing');
                     line++;
                 }
+                tokens.push(token);
                 break;
-            case DOUBLE_QUOT:
+            case DBL_QUOT:
                 var token = new Token(new Location(line), STRING, '');
-                for (var c = this.nextChar(); TokenKind[c] != DOUBLE_QUOT && c != '\n'; c = this.nextChar()) {
+                for (var c = this.nextChar(); chars[c] != DBL_QUOT && c != '\n'; c = this.nextChar()) {
                     token.append(c);
                 }
                 if (c == '\n') {
                     this.log.error(new Location(line), 'closing double quotation is missing');
                     line++;
                 }
+                tokens.push(token);
                 break;
             default:
-                var kind = TokenKind[c];
-                var token = new Token(new Location(line), kind, c);
-                for (var c = this.nextChar(); TokenKind[c] == kind; c = this.nextChar()) {
-                    token.append(c);
+                var token = new Token(new Location(line), chars[c], c);
+                if (token.kind) {
+                    for (var c = this.nextChar(); chars[c] == token.kind; c = this.nextChar()) {
+                        token.append(c);
+                    }
+                    this.index--;
+                } else {
+                    this.log.error(new Location(line), 'undefined token');
                 }
-                this.index--;
+                tokens.push(token);
                 break;
         }
-        
-        tokens.push(token);
     }
     
-    for (var i in tokens) {
-        console.log(tokens[i]);
-    }
+    tokens.push(new Token(new Location(line), END_OF_FILE));
     
     return tokens;
 }
