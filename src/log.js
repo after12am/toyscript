@@ -33,9 +33,9 @@ Log.prototype.error = function(location, text) {
 
 Log.prototype.out = function() {
     
-    for (var i in this.log.messages) {
+    for (var i in this.messages) {
         
-        var message = this.log.messages[i];
+        var message = this.messages[i];
         
         switch (message.type) {
             case 'info':

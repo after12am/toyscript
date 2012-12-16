@@ -13,7 +13,7 @@ Compiler.prototype.compile = function(code) {
     var tokens = tokenizer.tokenize();
     
     for (var i in tokens) {
-        if (tokens[i].kind != NEWLINE) {
+        if (tokens[i].kind != 'NEWLINE') {
             console.log(tokens[i].location.toString() + "\t" + tokens[i].kind + "\t\t" + tokens[i].text);
         }
     }
