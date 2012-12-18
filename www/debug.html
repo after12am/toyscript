@@ -28,9 +28,20 @@
     <script type="text/javascript">
         
         $(function() {
-            var code = $('script[type="text/babe"]').eq(1).text();
+            var code = $('script[type="text/babe"]').eq(0).text();
             console.log(code)
-            babe.compile(code);
+            
+            var compiler = new babe.Compiler();
+
+            compiler.compile(code);
+            
+            // for (var i in compiler.tokens) {
+            //     if (compiler.tokens[i].kind != 'NEWLINE') {
+            //         console.log(compiler.tokens[i].location.toString() + "\t" + compiler.tokens[i].kind + "\t\t" + compiler.tokens[i].text);
+            //     }
+            // }
+            
+            //babe.compile(code);
         });
         
     </script>

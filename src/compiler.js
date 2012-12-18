@@ -1,32 +1,30 @@
 
 var Compiler = function() {
     this.log = new Log();
+    this.tokens = [];
     this.script;
 }
 
 Compiler.prototype.compile = function(code) {
     
-    var res = false;
+    var tokenizer = new Tokenizer(code);
     
-    // source -> tokens
-    var tokenizer = new Tokenizer(code, this.log);
-    var tokens = tokenizer.tokenize();
-    
-    for (var i in tokens) {
-        if (tokens[i].kind != 'NEWLINE') {
-            console.log(tokens[i].location.toString() + "\t" + tokens[i].kind + "\t\t" + tokens[i].text);
-        }
+    try {
+        this.tokens = tokenizer.tokenize();
+    } catch (e) {
+        console.error(e);
+        return 0;
     }
     
-    if (this.log.hasErrors == false) {
-        // tokens -> javascript
-        if (tokens && tokens.length > 0) {
-            // parse tokens
-            // new Parser().parse(this.tokens);
-        }
+    if (this.tokens.length == 0) {
+        return 0;
     }
+    
+    var code = new Parser(this.tokens, this.log).parse();
     
     this.log.out();
+    
+    return (!this.log.hasErrors);
 }
 
 exports.compile = function(code, options) {
@@ -37,3 +35,9 @@ exports.compile = function(code, options) {
     
     return (!compiler.log.hasErrors);
 }
+
+exports.interpret = function() {
+    
+}
+
+exports.Compiler = Compiler;
