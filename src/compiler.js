@@ -1,38 +1,55 @@
+exports.appName = 'babe';
 
 var Compiler = function() {
-    this.log = new Log();
-    this.tokens = [];
-    this.script;
+    
 }
 
-Compiler.prototype.compile = function(code) {
+Compiler.prototype.compile = function(source) {
     
-    var tokenizer = new Tokenizer(code);
+    if (typeof source !== 'string') {
+        console.error('[bebe] input type is not string.');
+        return 0;
+    }
+    
+    var tokens = [];
+    var tokenizer = new Tokenizer(source);
+    
+    tokenizer.tokenize();
+    
+    
+    
+    /*
+    var tokenizer = new Tokenizer(source);
     
     try {
-        this.tokens = tokenizer.tokenize();
+        tokens = tokenizer.tokenize();
     } catch (e) {
         console.error(e);
         return 0;
     }
     
-    if (this.tokens.length == 0) {
+    if (tokens.length == 0) {
         return 0;
     }
     
-    var code = new Parser(this.tokens, this.log).parse();
+    var source = new Parser(tokens, this.log).parse();
     
     this.log.out();
     
     return (!this.log.hasErrors);
+    */
 }
 
-exports.compile = function(code, options) {
-    
+exports.tokenize = function(source) {
+    var tokens = [];
+    var tokenizer = new Tokenizer(source);
+    tokens = tokenizer.tokenize();
+    return tokens;
+}
+
+exports.compile = function(source, options) {
     var compiler = new Compiler();
-    
-    compiler.compile(code);
-    
+    compiler.compile(source);
     return (!compiler.log.hasErrors);
 }
 

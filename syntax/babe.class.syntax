@@ -4,15 +4,15 @@
 
 class Person:
     
-    constructor(@name):
-        print('my name is ' + this.name)
+    constructor(name = 'bob'):
+        print('my name is ' + name)
 
 # var Person = function(name) {
-#     this.name = name;
-#     console.log('my name is ' + this.name)
+#     name = name || 'bob';
+#     console.log('my name is ' + name)
 # }
 # 
-# person = new Person('bob')
+# person = new Person()
 
 
 class Person:
@@ -29,7 +29,8 @@ class Person:
 
 class Person:
     
-    constructor(@name):
+    constructor(name):
+        this.name = name
     
     say():
         print('my name is ' + this.name)
@@ -54,7 +55,7 @@ class Person:
 
 class Person:
     
-    constructor(@name):
+    constructor(name):
     
     say():
         print('my name is ' + this.name)

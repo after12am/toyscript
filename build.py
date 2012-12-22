@@ -2,7 +2,7 @@
 
 module = 'babe'
 input_path = 'src/'
-output_path = 'www/js/babe.js'
+output_path = 'lib/babe.js'
 
 import re, os, sys, time, tempfile
 
@@ -16,9 +16,9 @@ header = '''/*
 '''
 
 priorities = [
-    'src/log.js',
-    'src/token.js',
-    'src/parser.js'
+    # 'src/log.js',
+    # 'src/token.js',
+    # 'src/parser.js'
 ]
 
 def sources():

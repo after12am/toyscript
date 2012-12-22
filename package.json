@@ -1,0 +1,10 @@
+{
+    "name": "babe.js",
+    "version": "0.0.1",
+    "description": "",
+    "main": "./expect",
+    "devDependencies": {
+        "qunit": "*",
+        "jquery": "*"
+    }
+}
