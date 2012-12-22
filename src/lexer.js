@@ -13,23 +13,11 @@ Lexer.prototype.consume = function() {
     }
 }
 
-Lexer.prototype.nextChar = function() {
-    return this.lookahead(1);
-}
-
 Lexer.prototype.lookahead = function(k) {
     if (this.p + k < this.source.length) {
         return this.source[this.p + k];
     } else {
         return Token.EOF;
-    }
-}
-
-Lexer.prototype.expect = function(c) {
-    if (this.c === c) {
-        consume();
-    } else {
-        throw exports.appName + ': expecting' + c + '; found ' + this.c;
     }
 }
 
