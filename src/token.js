@@ -17,6 +17,6 @@ Token.KEYWORD = 'KEYWORD';
 
 Token.KEYWORDS = [];
 
-['EXTENDS', 'AND', 'OR', 'XOR', 'IN', 'IS', 'NOT', 'RETURN', 'IF', 'ELSE', 'WHILE', 'FOR', 'CONTINUE', 'BREAK', 'CLASS', 'NULL', 'THIS', 'TRUE', 'FALSE'].forEach(function(k) {
+['TYPEOF',  'INSTANCEOF', 'DELETE', 'NEW', 'TRY', 'CATCH', 'THROW', 'EXTENDS', 'AND', 'OR', 'XOR', 'IN', 'IS', 'NOT', 'RETURN', 'IF', 'ELIF', 'ELSE', 'WHILE', 'FOR', 'CONTINUE', 'BREAK', 'CLASS', 'NULL', 'THIS', 'TRUE', 'FALSE'].forEach(function(k) {
     Token.KEYWORDS[k] = k;
 });
