@@ -1,7 +1,3 @@
-function d(ss) {
-    console.log(ss);
-}
-
 module('LineTerminator');
 
 test("\r",function(){
@@ -226,18 +222,45 @@ test("test",function(){
 module('PUNCTUATOR');
 
 test("1 punctuator",function(){
-    var source = "{}()[]:,.=";
+    var source = '{';
     var tokens = babe.tokenize(source);
-    equal(tokens[1].text, source[0], "{");
-    equal(tokens[2].text, source[1], "}");
-    equal(tokens[3].text, source[2], "(");
-    equal(tokens[4].text, source[3], ")");
-    equal(tokens[5].text, source[4], "[");
-    equal(tokens[6].text, source[5], "]");
-    equal(tokens[7].text, source[6], ":");
-    equal(tokens[8].text, source[7], ",");
-    equal(tokens[9].text, source[8], ".");
-    equal(tokens[10].text, source[9], "=");
+    equal(tokens[1].text, source, source);
+    
+    var source = '}';
+    var tokens = babe.tokenize(source);
+    equal(tokens[1].text, source, source);
+    
+    var source = '(';
+    var tokens = babe.tokenize(source);
+    equal(tokens[1].text, source, source);
+    
+    var source = ')';
+    var tokens = babe.tokenize(source);
+    equal(tokens[1].text, source, source);
+    
+    var source = '[';
+    var tokens = babe.tokenize(source);
+    equal(tokens[1].text, source, source);
+    
+    var source = ']';
+    var tokens = babe.tokenize(source);
+    equal(tokens[1].text, source, source);
+    
+    var source = ':';
+    var tokens = babe.tokenize(source);
+    equal(tokens[1].text, source, source);
+    
+    var source = ',';
+    var tokens = babe.tokenize(source);
+    equal(tokens[1].text, source, source);
+    
+    var source = '.';
+    var tokens = babe.tokenize(source);
+    equal(tokens[1].text, source, source);
+    
+    var source = '=';
+    var tokens = babe.tokenize(source);
+    equal(tokens[1].text, source, source);
     
     var source = '+';
     var tokens = babe.tokenize(source);
@@ -293,7 +316,6 @@ test("1 punctuator",function(){
 });
 
 test("2 punctuator",function(){
-    
     var source = '*=';
     var tokens = babe.tokenize(source);
     equal(tokens[1].text, source, source);
@@ -366,6 +388,14 @@ test("3 punctuator",function(){
     equal(tokens[1].text, source, source);
     
     var source = "===";
+    var tokens = babe.tokenize(source);
+    equal(tokens[1].text, source, source);
+    
+    var source = ">>>";
+    var tokens = babe.tokenize(source);
+    equal(tokens[1].text, source, source);
+    
+    var source = "<<<";
     var tokens = babe.tokenize(source);
     equal(tokens[1].text, source, source);
 });
