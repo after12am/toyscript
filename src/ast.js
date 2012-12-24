@@ -1,16 +1,20 @@
-var AST = function(token) {
-    this.token = token;
-    this.children = [];
-}
-
-AST.prototype.nodeKind = function() {
-    return this.token.kind;
-}
-
-AST.prototype.add = function(ast) {
-    this.children.push(ast);
-}
-
-AST.prototype.toString = function() {
-    // should dynamically be overridden.
-}
+// node param must be object
+// var AST = function(node) {
+//     this.node = node;
+//     this.nodes = [];
+// }
+// 
+// // AST.prototype.type = function() {
+// //     return this.node.kind;
+// // }
+// // 
+// AST.prototype.add = function(node) {
+//     if (typeof node == 'object') this.nodes.concat(node);
+//     else this.nodes.push(node);
+// }
+// 
+// AST.prototype.toString = function() {
+//     // should be dynamically overridden.
+// }
+// 
+// var Node = AST;

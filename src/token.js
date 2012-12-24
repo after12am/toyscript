@@ -4,6 +4,13 @@ var Token = function(kind, text, location) {
     this.location = location;
 }
 
+Token.prototype.toString = function() {
+    return this.location.toString() + ' kind:' + this.kind + ' text:' + this.text;
+}
+
+//----------------------------------------
+// TOKEN LIST
+//----------------------------------------
 Token.EOF = 'EOF';
 Token.NEWLINE = 'NEWLINE';
 Token.INDENT = 'INDENT';
@@ -15,8 +22,34 @@ Token.OPERATOR = 'OPERATOR';
 Token.ASSIGN = 'ASSIGN';
 Token.KEYWORD = 'KEYWORD';
 
+//----------------------------------------
+// KEYWORD LIST
+//----------------------------------------
 Token.KEYWORDS = [];
-
-['TYPEOF',  'INSTANCEOF', 'DELETE', 'NEW', 'TRY', 'CATCH', 'THROW', 'EXTENDS', 'AND', 'OR', 'XOR', 'IN', 'IS', 'NOT', 'RETURN', 'IF', 'ELIF', 'ELSE', 'WHILE', 'FOR', 'CONTINUE', 'BREAK', 'CLASS', 'NULL', 'THIS', 'TRUE', 'FALSE'].forEach(function(k) {
-    Token.KEYWORDS[k] = k;
-});
+Token.KEYWORDS.TYPEOF = 'TYPEOF';
+Token.KEYWORDS.INSTANCEOF = 'INSTANCEOF';
+Token.KEYWORDS.DELETE = 'DELETE';
+Token.KEYWORDS.NEW = 'NEW';
+Token.KEYWORDS.TRY = 'TRY';
+Token.KEYWORDS.CATCH = 'CATCH';
+Token.KEYWORDS.THROW = 'THROW';
+Token.KEYWORDS.EXTENDS = 'EXTENDS';
+Token.KEYWORDS.AND = 'AND';
+Token.KEYWORDS.OR = 'OR';
+Token.KEYWORDS.XOR = 'XOR';
+Token.KEYWORDS.IN = 'IN';
+Token.KEYWORDS.IS = 'IS';
+Token.KEYWORDS.NOT = 'NOT';
+Token.KEYWORDS.RETURN = 'RETURN';
+Token.KEYWORDS.IF = 'IF';
+Token.KEYWORDS.ELIF = 'ELIF';
+Token.KEYWORDS.ELSE = 'ELSE';
+Token.KEYWORDS.WHILE = 'WHILE';
+Token.KEYWORDS.FOR = 'FOR';
+Token.KEYWORDS.CONTINUE = 'CONTINUE';
+Token.KEYWORDS.BREAK = 'BREAK';
+Token.KEYWORDS.CLASS = 'CLASS';
+Token.KEYWORDS.NULL = 'NULL';
+Token.KEYWORDS.THIS = 'THIS';
+Token.KEYWORDS.TRUE = 'TRUE';
+Token.KEYWORDS.FALSE = 'FALSE';

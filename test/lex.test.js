@@ -216,7 +216,6 @@ test("test",function(){
     var source = "\"test\"";
     var tokens = babe.tokenize(source);
     equal("\"" + tokens[1].text + "\"", source);
-    
 });
 
 module('PUNCTUATOR');

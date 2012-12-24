@@ -2,7 +2,7 @@
 
 module = 'babe'
 input_path = 'src/'
-output_path = 'lib/babe.js'
+output_path = 'build/babe.js'
 
 import re, os, sys, time, tempfile
 

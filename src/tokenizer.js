@@ -36,7 +36,7 @@ Tokenizer.prototype.tokenize = function() {
         if (this.isLetter(this.c)) {
             if (token = this.scanIdent()) {
                 if (Token.KEYWORDS[token.text.toUpperCase()]) {
-                    token.kind = Token.KEYWORD;
+                    token.kind = token.text.toUpperCase();
                 }
                 tokens.push(token);
                 continue;

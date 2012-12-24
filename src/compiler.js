@@ -1,43 +1,34 @@
-exports.appName = 'babe';
-
-var Compiler = function() {
-    
+var Compiler = function(source) {
+    this.source = source;
 }
 
-Compiler.prototype.compile = function(source) {
+Compiler.prototype.compile = function() {
     
-    if (typeof source !== 'string') {
-        console.error('[bebe] input type is not string.');
-        return 0;
+    if (typeof this.source !== 'string') {
+        console.error('input type is not string.');
+        return;
     }
     
-    var tokens = [];
-    var tokenizer = new Tokenizer(source);
+    var log = new Log();
+    var tokenizer = new Tokenizer(this.source);
+    var tokens;
+    var ast;
+    var compiled;
     
-    tokenizer.tokenize();
-    
-    
-    
-    /*
-    var tokenizer = new Tokenizer(source);
-    
-    try {
-        tokens = tokenizer.tokenize();
-    } catch (e) {
-        console.error(e);
-        return 0;
+    if (tokens = tokenizer.tokenize()) {
+        if (ast = new Parser(tokens, log).parse()) {
+            compiled = new CodeGen(ast).generate();
+        }
     }
     
-    if (tokens.length == 0) {
-        return 0;
+    return {
+        'source': this.source,
+        'tokens': token,
+        'ast': ast,
+        'compiled': compiled,
+        'log': log,
+        'error': log.hasError()
     }
-    
-    var source = new Parser(tokens, this.log).parse();
-    
-    this.log.out();
-    
-    return (!this.log.hasErrors);
-    */
 }
 
 exports.tokenize = function(source) {
@@ -47,14 +38,35 @@ exports.tokenize = function(source) {
     return tokens;
 }
 
-exports.compile = function(source, options) {
-    var compiler = new Compiler();
-    compiler.compile(source);
+exports.parse = function(source) {
+    var tokens = exports.tokenize(source);
+    var ast = new Parser(tokens).parse();
+    return ast;
+}
+
+exports.codegen = function(source) {
+    var ast = exports.parse(source);
+    var compiled = new CodeGen(ast).generate();
+    return compiled;
+}
+
+exports.compile = function(source) {
+    var compiler = new Compiler(source);
+    compiler.compile();
     return (!compiler.log.hasErrors);
 }
 
-exports.interpret = function() {
-    
+exports.run = function(source) {
+    var res = exports.compile(source);
+    for (var i in res['log'].messages) {
+        console.log(res['log'].messages[i]);
+    }
+    if (res['error'] === false) {
+        eval(res['compiled']);
+    }
+    return res;
 }
 
-exports.Compiler = Compiler;
+exports.interpret = function() {
+    return exports.run();
+}
