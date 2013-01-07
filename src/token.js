@@ -13,6 +13,10 @@ Token.prototype.toString = function() {
 //----------------------------------------
 Token.EOF = 'EOF';
 Token.NEWLINE = 'NEWLINE';
+Token.NONE = 'NONE';
+Token.NAN = 'NAN';
+Token.BOOLEAN = 'BOOLEAN';
+Token.INFINITY = 'INFINITY';
 Token.INDENT = 'INDENT';
 Token.IDENT = 'IDENT';
 Token.DIGIT = 'DIGIT';
@@ -20,7 +24,8 @@ Token.PUNCTUATOR = 'PUNCTUATOR';
 Token.STRING = 'STRING';
 Token.OPERATOR = 'OPERATOR';
 Token.ASSIGN = 'ASSIGN';
-Token.KEYWORD = 'KEYWORD';
+Token.COLON = 'COLON';
+Token.KEYWORD = 'KEYWORD'; 
 
 //----------------------------------------
 // KEYWORD LIST

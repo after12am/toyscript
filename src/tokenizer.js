@@ -33,10 +33,20 @@ Tokenizer.prototype.tokenize = function() {
             continue;
         }
         
+        // ignore colon
+        if (this.c == ';') {
+            this.consume();
+            continue;
+        }
+        
         if (this.isLetter(this.c)) {
             if (token = this.scanIdent()) {
-                if (Token.KEYWORDS[token.text.toUpperCase()]) {
-                    token.kind = token.text.toUpperCase();
+                if (token.text.toUpperCase() != Token.KEYWORDS.TRUE
+                 && token.text.toUpperCase() != Token.KEYWORDS.FALSE) {
+                    if (Token.KEYWORDS[token.text.toUpperCase()]) {
+                        token.kind = token.text.toUpperCase();
+                        
+                    }
                 }
                 tokens.push(token);
                 continue;
@@ -73,7 +83,7 @@ Tokenizer.prototype.tokenize = function() {
             continue;
         }
         
-        throw exports.appName + ': unexpecting ' + this.c;
+        throw 'line ' + this.line + ': Unknown token \'' + this.c + '\', asserted by tokenizer';
         this.consume();
     }
     
@@ -82,19 +92,22 @@ Tokenizer.prototype.tokenize = function() {
 }
 
 Tokenizer.prototype.scanLineTerminator = function() {
-    var c1 = this.c;
-    var c2 = this.lookahead(1);
+    
+    var c = this.c;
     this.line++;
     this.consume();
-    if ((c1 + c2) == '\r\n') {
+    
+    if ((c + this.lookahead(1)) == '\r\n') {
+        c += this.lookahead(1);
         this.consume();
-        return new Token(Token.NEWLINE, c1 + c2, new Location(this.line));
     }
-    return new Token(Token.NEWLINE, c1, new Location(this.line));
+    return new Token(Token.NEWLINE, c, new Location(this.line));
 }
 
 Tokenizer.prototype.scanIndent = function() {
+    
     var size = 0;
+    
     while (this.p < this.source.length) {
         if (this.c == ' ' || this.c == '\t') size++;
         else break;
@@ -104,7 +117,55 @@ Tokenizer.prototype.scanIndent = function() {
 }
 
 Tokenizer.prototype.scanIdent = function() {
+    
+    var ident = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3);
+    if (ident === 'None') {
+        this.consume();
+        this.consume();
+        this.consume();
+        this.consume();
+        return new Token(Token.NONE, ident, new Location(this.line));
+    }
+    
+    var ident = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3);
+    if (ident === 'true') {
+        this.consume();
+        this.consume();
+        this.consume();
+        this.consume();
+        return new Token(Token.BOOLEAN, ident, new Location(this.line));
+    }
+    
+    var ident = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3);
+    if (ident === 'false') {
+        this.consume();
+        this.consume();
+        this.consume();
+        this.consume();
+        return new Token(Token.BOOLEAN, ident, new Location(this.line));
+    }
+    
+    var ident = this.c + this.lookahead(1) + this.lookahead(2);
+    if (ident === 'NaN') {
+        this.consume();
+        this.consume();
+        this.consume();
+        return new Token(Token.NAN, ident, new Location(this.line));
+    }
+    
+    var ident = this.c
+        + this.lookahead(1) + this.lookahead(2) + this.lookahead(3)
+        + this.lookahead(4) + this.lookahead(5) + this.lookahead(6)
+        + this.lookahead(7);
+    if (ident === 'Infinity') {
+        this.consume(); this.consume(); this.consume();
+        this.consume(); this.consume(); this.consume();
+        this.consume(); this.consume();
+        return new Token(Token.INFINITY, ident, new Location(this.line));
+    }
+    
     var ident = '';
+    
     while (this.c !== Token.EOF) {
         if (this.isLetter(this.c) || this.isDigit(this.c)) {
             ident += this.c;
@@ -117,7 +178,9 @@ Tokenizer.prototype.scanIdent = function() {
 }
 
 Tokenizer.prototype.scanDigit = function() {
+    
     var digit = '';
+    
     while (this.c !== Token.EOF) {
         if (this.isDigit(this.c)) {
             digit += this.c;
@@ -130,14 +193,17 @@ Tokenizer.prototype.scanDigit = function() {
 }
 
 Tokenizer.prototype.scanString = function(delimiter) {
+    
     var ss = '';
     this.consume();
+    
     while (1) {
+        if (this.c === Token.EOF || this.isLineTerminator(this.c)) {
+            throw ': on line ' + this.line + ': Unexpected token ILLEGAL';
+        }
         if (this.c === delimiter) {
             this.consume();
             break;
-        } else if (this.c === Token.EOF || this.isLineTerminator(this.c)) {
-            throw exports.appName + ': on line ' + this.line + ': Unexpected token ILLEGAL';
         }
         ss += this.c;
         this.consume();
@@ -151,9 +217,9 @@ Tokenizer.prototype.scanPunctuator = function() {
     if (this.c === '{' || this.c === '}' || this.c === '(' ||
         this.c === ')' || this.c === '[' || this.c === ']' ||
         this.c === ':' || this.c === ',' || this.c === '.') {
-        var punctuator = this.c;
+        var c = this.c;
         this.consume();
-        return new Token(Token.PUNCTUATOR, punctuator, new Location(this.line));
+        return new Token(Token.PUNCTUATOR, c, new Location(this.line));
     }
 }
 

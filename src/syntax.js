@@ -1,8 +1,9 @@
-var Syntax = {
-    NullLiteral: 'NullLiteral',
-    BooleanLiteral: 'BooleanLiteral',
-    NumericLiteral: 'NumericLiteral',
-    StringLiteral: 'StringLiteral',
-    Identifier: 'Identifier',
-    IfStatement: 'IfStatement'
-}
+var Syntax = [];
+Syntax.NullLiteral = 'NullLiteral';
+Syntax.NaNLiteral = 'NaNLiteral';
+Syntax.InfinityLiteral = 'InfinityLiteral';
+Syntax.BooleanLiteral = 'BooleanLiteral';
+Syntax.NumericLiteral = 'NumericLiteral';
+Syntax.StringLiteral = 'StringLiteral';
+Syntax.Identifier = 'Identifier';
+Syntax.IfStatement = 'IfStatement'

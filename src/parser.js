@@ -1,4 +1,5 @@
 // http://www2u.biglobe.ne.jp/~oz-07ams/prog/ecma262r3/
+
 var Parser = function(tokens, log) {
     this.p = 0;
     this.tokens = tokens;
@@ -26,24 +27,27 @@ Parser.prototype.lookahead = function(k) {
     }
 }
 
-Parser.prototype.expect = function(text) {
-    if (this.token.text == text) {
-        this.consume();
+Parser.prototype.lookback = function(k) {
+    if (this.p - k > 0) {
+        return this.tokens[this.p - k];
     } else {
-        this.assert('unexpecting text, expecting:' + text + ' giving:' + this.token.text);
+        return new Token(Token.EOF);
     }
 }
 
+Parser.prototype.expect = function(text) {
+    if (this.token.text !== text) {
+        this.assert('line ' + this.token.location.line + ': Unexpected error, expected ' + text + ' giving ' + this.token.text);
+    }
+    this.consume();
+}
+
 Parser.prototype.match = function(text) {
-    return (this.token.text != text);
+    return (this.token.text == text);
 }
 
 Parser.prototype.assert = function(message) {
     throw message;
-}
-
-Parser.prototype.isLineTerminator = function(c) {
-    return c == '\n' || c == '\r';// || c == '\r\n';
 }
 
 Parser.prototype.matchAssign = function() {
@@ -110,7 +114,7 @@ Parser.prototype.parse = function() {
             continue;
         }
         
-        throw 'unexpected token, ' + this.token.toString();
+        this.assert('unexpected token, ' + this.token.toString());
     }
     
     return this.nodes;
@@ -118,39 +122,42 @@ Parser.prototype.parse = function() {
 
 Parser.prototype.parseStatement = function() {
     
+    // ignore newline token
     if (this.token.kind === Token.NEWLINE) {
         this.consume();
         return this.parseStatement();
     }
     
-    // check indent
     if (this.token.kind === Token.INDENT) {
+        // check indent
         if (this.indent_size * this.indent !== this.token.text) {
-            throw 'error around indent';
+            this.assert('error around indent');
+        } else {
+            this.consume();
+            return this.parseStatement();
         }
-        this.consume();
-        return this.parseStatement();
     }
     
     switch (this.token.kind) {
+        case Token.COLON:
+            return this.parseBlock();
         case Token.KEYWORDS.IF:
             return this.parseIfStatement();
         case Token.IDENT:
+        case Token.BOOLEAN:
             return this.parseVariableStatement();
         default:
-            throw 'unkonwn token ' + this.token;
+            this.assert('unknown token ' + this.token);
     }
 }
 
 Parser.prototype.parseIfStatement = function() {
     
-    var expr, exprs;
-    
     this.expect('if');
     
-    expr = this.parseExpression();
+    var expr = this.parseExpression();
     
-    this.expect(':');
+    
     
     this.indent++;
     
@@ -161,9 +168,25 @@ Parser.prototype.parseIfStatement = function() {
     return {
         type: Syntax.IfStatement,
         condition: expr,
-        consequent: exprs,
+        statements: exprs,
         alternate: null
     };
+}
+
+Parser.prototype.parseBlock = function() {
+    
+    var expr = this.parseStatementList();
+    
+    return expr;
+}
+
+Parser.prototype.parseStatementList = function() {
+    
+    var expr;
+    
+    
+    
+    return expr;
 }
 
 Parser.prototype.parseExpression = function() {
@@ -312,9 +335,40 @@ Parser.prototype.parsePrimaryExpression = function() {
     if (this.token.kind === Token.IDENT) {
         var token = this.token;
         this.consume();
+        if (this.match('=') || this.lookback(2).text == '=') {
+            return {
+                type: Syntax.Identifier,
+                name: token.text 
+            };
+        } else {
+            this.assert('Variable declaration　error, variable has to be initialized, asserted by parser.');
+        }
+    }
+    
+    if (this.token.kind === Token.NONE) {
+        var token = this.token;
+        this.consume();
         return {
-            type: Syntax.Identifier,
-            name: token.text 
+            type: Syntax.NullLiteral,
+            name: 'null'
+        };
+    }
+    
+    if (this.token.kind === Token.NAN) {
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.NaNLiteral,
+            name: 'NaN'
+        };
+    }
+    
+    if (this.token.kind === Token.INFINITY) {
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.InfinityLiteral,
+            name: 'Infinity'
         };
     }
     
@@ -323,7 +377,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.NumericLiteral,
-            name: token.text 
+            name: token.text
         };
     }
     
@@ -332,7 +386,16 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.StringLiteral,
-            name: token.text 
+            name: token.text
+        };
+    }
+    
+    if (this.token.kind === Token.BOOLEAN) {
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.BooleanLiteral,
+            name: token.text
         };
     }
 }
