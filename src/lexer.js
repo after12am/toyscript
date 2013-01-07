@@ -21,6 +21,8 @@ Lexer.prototype.lookahead = function(k) {
     }
 }
 
+// issue: change to class method from instance method 
+
 Lexer.prototype.isWhiteSpace = function(c) {
     return c.match(/\s/);
 }

@@ -41,12 +41,14 @@ Tokenizer.prototype.tokenize = function() {
         
         if (this.isLetter(this.c)) {
             if (token = this.scanIdent()) {
-                if (token.text.toUpperCase() != Token.KEYWORDS.TRUE
-                 && token.text.toUpperCase() != Token.KEYWORDS.FALSE) {
-                    if (Token.KEYWORDS[token.text.toUpperCase()]) {
-                        token.kind = token.text.toUpperCase();
-                        
-                    }
+                // don't replace token.kind with keyword when giving text is `true` or `false`.
+                if (token.text.toUpperCase() == Token.KEYWORDS.TRUE
+                 || token.text.toUpperCase() == Token.KEYWORDS.FALSE) {
+                     tokens.push(token);
+                     continue;
+                }
+                if (Token.KEYWORDS[token.text.toUpperCase()]) {
+                    token.kind = token.text.toUpperCase();
                 }
                 tokens.push(token);
                 continue;
