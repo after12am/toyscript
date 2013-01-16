@@ -258,7 +258,7 @@ Parser.prototype.lookback = function(k) {
 
 Parser.prototype.expect = function(text) {
     if (this.token.text !== text) {
-        this.assert('line ' + this.token.location.line + ': Unexpected error, expected ' + text + ' giving ' + this.token.text);
+        this.assert('line ' + this.token.location.line + ': Unexpected error, expected \'' + text + '\', but giving \'' + this.token.text + '\'');
     }
     this.consume();
 }
@@ -547,6 +547,19 @@ Parser.prototype.parseMemberExpression = function() {
     
     var expr = this.parsePrimaryExpression();
     
+    if (this.match('[')) {
+        var member = expr;
+        this.consume();
+        expr = this.parseExpression();
+        this.expect(']');
+        
+        return {
+            type: Syntax.MemberExpression,
+            member: member,
+            expr: expr
+        };
+    }
+    
     return expr;
 }
 
@@ -555,14 +568,17 @@ Parser.prototype.parsePrimaryExpression = function() {
     if (this.token.kind === Token.IDENT) {
         var token = this.token;
         this.consume();
-        if (this.match('=') || this.lookback(2).text == '=') {
+        if (this.match('=') || this.lookback(2).text == '=' || this.match('[')) {
             return {
                 type: Syntax.Identifier,
                 name: token.text 
             };
-        } else {
-            this.assert('Variable declaration　error, variable has to be initialized, asserted by parser.');
         }
+        // return {
+        //     type: Syntax.Identifier,
+        //     name: token.text 
+        // };
+        this.assert('Variable declaration　error, variable has to be initialized, asserted by parser.');
     }
     
     if (this.token.kind === Token.NONE) {
@@ -624,6 +640,10 @@ Parser.prototype.parsePrimaryExpression = function() {
         if (this.match('[')) {
             return this.parseArrayLiteral();
         }
+        
+        if (this.match('{')) {
+            return this.parseObjectLiteral();
+        }
     }
 }
 
@@ -645,9 +665,78 @@ Parser.prototype.parseArrayLiteral = function() {
     
     return {
         type: Syntax.ArrayLiteral,
-        name: elements
+        elements: elements
     };
 }
+
+Parser.prototype.parseObjectLiteral = function() {
+    
+    var properties = [];
+    
+    this.expect('{');
+    
+    while (!this.match('}')) {
+        if (this.match(',')) {
+            this.consume();
+            continue;
+        }
+        properties.push(this.parsePropertyNameAndValueList());
+    }
+    
+    this.expect('}');
+    
+    return {
+        type: Syntax.ObjectLiteral,
+        properties: properties
+    };
+}
+
+Parser.prototype.parsePropertyNameAndValueList = function() {
+    
+    var name = this.parsePropertyName();
+    this.expect(':');
+    var value = this.parseAssignmentExpression();
+    
+    return {
+        type: Syntax.ObjectLiteral,
+        left: name,
+        right: value
+    };
+}
+
+Parser.prototype.parsePropertyName = function() {
+    
+    if (this.token.kind === Token.IDENT) {
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.Identifier,
+            name: token.text 
+        };
+    }
+    
+    if (this.token.kind === Token.DIGIT) {
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.NumericLiteral,
+            name: token.text
+        };
+    }
+    
+    if (this.token.kind === Token.STRING) {
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.StringLiteral,
+            name: token.text
+        };
+    }
+    
+    this.assert('Unexpected PropertyName, ' + this.token.toString());
+}
+
+
 
 Parser.prototype.parseVariableStatement = function() {
     
@@ -668,7 +757,9 @@ Syntax.InfinityLiteral = 'InfinityLiteral';
 Syntax.BooleanLiteral = 'BooleanLiteral';
 Syntax.NumericLiteral = 'NumericLiteral';
 Syntax.ArrayLiteral = 'ArrayLiteral';
+Syntax.ObjectLiteral = 'ObjectLiteral';
 Syntax.StringLiteral = 'StringLiteral';
+Syntax.MemberExpression = 'MemberExpression';
 Syntax.Identifier = 'Identifier';
 Syntax.IfStatement = 'IfStatement'
 // src/token.js
