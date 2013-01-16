@@ -4,6 +4,7 @@ Syntax.NaNLiteral = 'NaNLiteral';
 Syntax.InfinityLiteral = 'InfinityLiteral';
 Syntax.BooleanLiteral = 'BooleanLiteral';
 Syntax.NumericLiteral = 'NumericLiteral';
+Syntax.ArrayLiteral = 'ArrayLiteral';
 Syntax.StringLiteral = 'StringLiteral';
 Syntax.Identifier = 'Identifier';
 Syntax.IfStatement = 'IfStatement'

@@ -1,6 +1,6 @@
 
- definition of property
-=========================
+ definition of types
+======================
 
 a
 // Variable declaration　error, variable has to be initialized.
@@ -46,3 +46,13 @@ a = 1
 b = '{a} + 1 = 2'
 // var a = 1;
 // var b = '1 + 1 = 2';
+
+
+a = []
+// var a = [];
+
+
+a = [1, 2]
+// var a = [1, 2];
+
+

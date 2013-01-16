@@ -84,3 +84,20 @@ test("expected indent error occured",function(){
         ok(1, 'expected indent error occured');
     }
 });
+
+test("a = []",function(){
+    var source = 'a = []';
+    var nodes = babe.parse(source);
+    equal(nodes[0].left.name, 'a', nodes[0].left.type + ' is ok');
+    equal(nodes[0].operator, '=', nodes[0].type + ' is ok');
+    ok(nodes[0].right.name, [], nodes[0].right.type + ' is ok');
+});
+
+test("a = [1, 2]",function(){
+    var source = 'a = [1, 2]';
+    var nodes = babe.parse(source);
+    equal(nodes[0].left.name, 'a', nodes[0].left.type + ' is ok');
+    equal(nodes[0].operator, '=', nodes[0].type + ' is ok');
+    equal(nodes[0].right.name[0].name, 1, nodes[0].right.type + ' is ok');
+    equal(nodes[0].right.name[1].name, 2, nodes[0].right.type + ' is ok');
+});

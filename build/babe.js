@@ -335,7 +335,7 @@ Parser.prototype.parse = function() {
             continue;
         }
         
-        this.assert('unexpected token, ' + this.token.toString());
+        this.assert('Unexpected token, ' + this.token.toString());
     }
     
     return this.nodes;
@@ -366,9 +366,10 @@ Parser.prototype.parseStatement = function() {
             return this.parseIfStatement();
         case Token.IDENT:
         case Token.BOOLEAN:
-            return this.parseVariableStatement();
+        case Token.PUNCTUATOR:
+            return this.parseVariableStatement();    
         default:
-            this.assert('unknown token ' + this.token);
+            this.assert('Unknown token ' + this.token);
     }
 }
 
@@ -377,8 +378,6 @@ Parser.prototype.parseIfStatement = function() {
     this.expect('if');
     
     var expr = this.parseExpression();
-    
-    
     
     this.indent++;
     
@@ -619,6 +618,35 @@ Parser.prototype.parsePrimaryExpression = function() {
             name: token.text
         };
     }
+    
+    if (this.token.kind === Token.PUNCTUATOR) {
+        
+        if (this.match('[')) {
+            return this.parseArrayLiteral();
+        }
+    }
+}
+
+Parser.prototype.parseArrayLiteral = function() {
+    
+    var elements = [];
+    
+    this.expect('[');
+    
+    while (!this.match(']')) {
+        if (this.match(',')) {
+            this.consume();
+            continue;
+        }
+        elements.push(this.parseAssignmentExpression());
+    }
+    
+    this.expect(']');
+    
+    return {
+        type: Syntax.ArrayLiteral,
+        name: elements
+    };
 }
 
 Parser.prototype.parseVariableStatement = function() {
@@ -639,6 +667,7 @@ Syntax.NaNLiteral = 'NaNLiteral';
 Syntax.InfinityLiteral = 'InfinityLiteral';
 Syntax.BooleanLiteral = 'BooleanLiteral';
 Syntax.NumericLiteral = 'NumericLiteral';
+Syntax.ArrayLiteral = 'ArrayLiteral';
 Syntax.StringLiteral = 'StringLiteral';
 Syntax.Identifier = 'Identifier';
 Syntax.IfStatement = 'IfStatement'
