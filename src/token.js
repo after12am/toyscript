@@ -25,7 +25,9 @@ Token.STRING = 'STRING';
 Token.OPERATOR = 'OPERATOR';
 Token.ASSIGN = 'ASSIGN';
 Token.COLON = 'COLON';
-Token.KEYWORD = 'KEYWORD'; 
+Token.KEYWORD = 'KEYWORD';
+Token.SINGLE_LINE_COMMENT = 'SINGLE_LINE_COMMENT';
+Token.MULTI_LINE_COMMENT = 'MULTI_LINE_COMMENT';
 
 //----------------------------------------
 // KEYWORD LIST

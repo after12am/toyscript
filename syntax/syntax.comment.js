@@ -3,12 +3,9 @@
 ========================
 
 # comment
+// // comment
 
--> // comment
-
-
-and below comment is available
-
+/* implemented but deprecated */
 /*
     comment
 */

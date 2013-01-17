@@ -79,7 +79,12 @@ Tokenizer.prototype.tokenize = function() {
             tokens.push(token);
             continue;
         }
-
+        
+        if (token = this.scanComment()) {
+            tokens.push(token);
+            continue;
+        }
+        
         if (token = this.scanOperator()) {
             tokens.push(token);
             continue;
@@ -295,4 +300,33 @@ Tokenizer.prototype.scanAssign = function() {
     }
     
     return false;
+}
+
+Tokenizer.prototype.scanComment = function() {
+    
+    var sign = this.c;
+    if (sign === '#') {
+        this.consume();
+        var comment = '';
+        while (!(this.c === Token.EOF || this.isLineTerminator(this.c))) {
+            comment += this.c;
+            this.consume();
+        }
+        return new Token(Token.SINGLE_LINE_COMMENT, comment, new Location(this.line));
+    }
+    
+    var sign = this.c + this.lookahead(1);
+    if (sign == '/*') {
+        this.consume();
+        this.consume();
+        var comment = '';
+        while (this.c + this.lookahead(1) != '*/') {
+            if (this.c === Token.EOF) break;
+            comment += this.c;
+            this.consume();
+        }
+        this.consume();
+        this.consume();
+        return new Token(Token.SINGLE_LINE_COMMENT, comment, new Location(this.line));
+    }
 }

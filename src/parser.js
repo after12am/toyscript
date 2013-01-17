@@ -131,6 +131,10 @@ Parser.prototype.parseSourceElement = function() {
         return node;
     }
     
+    if (node = this.parseFunction()) {
+        return node;
+    }
+    
     this.assert('Unexpected token, ' + this.token.toString());
 }
 
@@ -168,7 +172,9 @@ Parser.prototype.parseStatement = function() {
         case Token.IDENT:
         case Token.BOOLEAN:
         case Token.PUNCTUATOR:
-            return this.parseVariableStatement();    
+            return this.parseVariableStatement();
+        case Token.SINGLE_LINE_COMMENT:
+            return this.parseComment();
         default:
             this.assert('Unknown token ' + this.token);
     }
@@ -372,7 +378,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.Identifier,
-            name: token.text 
+            value: token.text 
         };
     }
     
@@ -381,7 +387,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.NullLiteral,
-            name: 'null'
+            value: 'null'
         };
     }
     
@@ -390,7 +396,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.NaNLiteral,
-            name: 'NaN'
+            value: 'NaN'
         };
     }
     
@@ -399,7 +405,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.InfinityLiteral,
-            name: 'Infinity'
+            value: 'Infinity'
         };
     }
     
@@ -408,7 +414,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.NumericLiteral,
-            name: token.text
+            value: token.text
         };
     }
     
@@ -417,7 +423,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.StringLiteral,
-            name: token.text
+            value: token.text
         };
     }
     
@@ -426,7 +432,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.BooleanLiteral,
-            name: token.text
+            value: token.text
         };
     }
     
@@ -488,14 +494,13 @@ Parser.prototype.parseObjectLiteral = function() {
 
 Parser.prototype.parsePropertyNameAndValueList = function() {
     
-    var name = this.parsePropertyName();
+    var value = this.parsePropertyName();
     this.expect(':');
-    var value = this.parseAssignmentExpression();
     
     return {
         type: Syntax.ObjectLiteral,
-        left: name,
-        right: value
+        left: value,
+        right: this.parseAssignmentExpression()
     };
 }
 
@@ -506,7 +511,7 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.Identifier,
-            name: token.text 
+            value: token.text 
         };
     }
     
@@ -515,7 +520,7 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.NumericLiteral,
-            name: token.text
+            value: token.text
         };
     }
     
@@ -524,7 +529,7 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.StringLiteral,
-            name: token.text
+            value: token.text
         };
     }
     
@@ -542,4 +547,31 @@ Parser.prototype.parseVariableStatement = function() {
 
 Parser.prototype.parseAssignmentOperator = function() {
     
+}
+
+Parser.prototype.parseFunction = function() {
+    
+}
+
+Parser.prototype.parseComment = function() {
+    
+    // single line comment
+    if (this.token.kind === Token.SINGLE_LINE_COMMENT) {
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.SingleLineComment,
+            value: token.text
+        }
+    }
+    
+    // multi line comment
+    if (this.token.kind === Token.MULTI_LINE_COMMENT) {
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.MultiLineComment,
+            value: token.text
+        }
+    }
 }

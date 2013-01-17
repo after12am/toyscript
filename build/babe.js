@@ -352,6 +352,10 @@ Parser.prototype.parseSourceElement = function() {
         return node;
     }
     
+    if (node = this.parseFunction()) {
+        return node;
+    }
+    
     this.assert('Unexpected token, ' + this.token.toString());
 }
 
@@ -389,7 +393,9 @@ Parser.prototype.parseStatement = function() {
         case Token.IDENT:
         case Token.BOOLEAN:
         case Token.PUNCTUATOR:
-            return this.parseVariableStatement();    
+            return this.parseVariableStatement();
+        case Token.SINGLE_LINE_COMMENT:
+            return this.parseComment();
         default:
             this.assert('Unknown token ' + this.token);
     }
@@ -593,7 +599,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.Identifier,
-            name: token.text 
+            value: token.text 
         };
     }
     
@@ -602,7 +608,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.NullLiteral,
-            name: 'null'
+            value: 'null'
         };
     }
     
@@ -611,7 +617,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.NaNLiteral,
-            name: 'NaN'
+            value: 'NaN'
         };
     }
     
@@ -620,7 +626,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.InfinityLiteral,
-            name: 'Infinity'
+            value: 'Infinity'
         };
     }
     
@@ -629,7 +635,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.NumericLiteral,
-            name: token.text
+            value: token.text
         };
     }
     
@@ -638,7 +644,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.StringLiteral,
-            name: token.text
+            value: token.text
         };
     }
     
@@ -647,7 +653,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         this.consume();
         return {
             type: Syntax.BooleanLiteral,
-            name: token.text
+            value: token.text
         };
     }
     
@@ -709,14 +715,13 @@ Parser.prototype.parseObjectLiteral = function() {
 
 Parser.prototype.parsePropertyNameAndValueList = function() {
     
-    var name = this.parsePropertyName();
+    var value = this.parsePropertyName();
     this.expect(':');
-    var value = this.parseAssignmentExpression();
     
     return {
         type: Syntax.ObjectLiteral,
-        left: name,
-        right: value
+        left: value,
+        right: this.parseAssignmentExpression()
     };
 }
 
@@ -727,7 +732,7 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.Identifier,
-            name: token.text 
+            value: token.text 
         };
     }
     
@@ -736,7 +741,7 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.NumericLiteral,
-            name: token.text
+            value: token.text
         };
     }
     
@@ -745,7 +750,7 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.StringLiteral,
-            name: token.text
+            value: token.text
         };
     }
     
@@ -765,6 +770,32 @@ Parser.prototype.parseAssignmentOperator = function() {
     
 }
 
+Parser.prototype.parseFunction = function() {
+    
+}
+
+Parser.prototype.parseComment = function() {
+    
+    // single line comment
+    if (this.token.kind === Token.SINGLE_LINE_COMMENT) {
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.SingleLineComment,
+            value: token.text
+        }
+    }
+    
+    // multi line comment
+    if (this.token.kind === Token.MULTI_LINE_COMMENT) {
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.MultiLineComment,
+            value: token.text
+        }
+    }
+}
 // src/syntax.js
 var Syntax = [];
 Syntax.NullLiteral = 'NullLiteral';
@@ -777,7 +808,10 @@ Syntax.ObjectLiteral = 'ObjectLiteral';
 Syntax.StringLiteral = 'StringLiteral';
 Syntax.MemberExpression = 'MemberExpression';
 Syntax.Identifier = 'Identifier';
-Syntax.IfStatement = 'IfStatement'
+Syntax.IfStatement = 'IfStatement';
+Syntax.SingleLineComment = 'SingleLineComment';
+Syntax.MultiLineComment = 'MultiLineComment';
+
 // src/token.js
 var Token = function(kind, text, location) {
     this.kind = kind;
@@ -806,7 +840,9 @@ Token.STRING = 'STRING';
 Token.OPERATOR = 'OPERATOR';
 Token.ASSIGN = 'ASSIGN';
 Token.COLON = 'COLON';
-Token.KEYWORD = 'KEYWORD'; 
+Token.KEYWORD = 'KEYWORD';
+Token.SINGLE_LINE_COMMENT = 'SINGLE_LINE_COMMENT';
+Token.MULTI_LINE_COMMENT = 'MULTI_LINE_COMMENT';
 
 //----------------------------------------
 // KEYWORD LIST
@@ -922,7 +958,12 @@ Tokenizer.prototype.tokenize = function() {
             tokens.push(token);
             continue;
         }
-
+        
+        if (token = this.scanComment()) {
+            tokens.push(token);
+            continue;
+        }
+        
         if (token = this.scanOperator()) {
             tokens.push(token);
             continue;
@@ -1138,6 +1179,35 @@ Tokenizer.prototype.scanAssign = function() {
     }
     
     return false;
+}
+
+Tokenizer.prototype.scanComment = function() {
+    
+    var sign = this.c;
+    if (sign === '#') {
+        this.consume();
+        var comment = '';
+        while (!(this.c === Token.EOF || this.isLineTerminator(this.c))) {
+            comment += this.c;
+            this.consume();
+        }
+        return new Token(Token.SINGLE_LINE_COMMENT, comment, new Location(this.line));
+    }
+    
+    var sign = this.c + this.lookahead(1);
+    if (sign == '/*') {
+        this.consume();
+        this.consume();
+        var comment = '';
+        while (this.c + this.lookahead(1) != '*/') {
+            if (this.c === Token.EOF) break;
+            comment += this.c;
+            this.consume();
+        }
+        this.consume();
+        this.consume();
+        return new Token(Token.SINGLE_LINE_COMMENT, comment, new Location(this.line));
+    }
 }
 return exports;
 })();

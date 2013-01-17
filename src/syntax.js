@@ -9,4 +9,6 @@ Syntax.ObjectLiteral = 'ObjectLiteral';
 Syntax.StringLiteral = 'StringLiteral';
 Syntax.MemberExpression = 'MemberExpression';
 Syntax.Identifier = 'Identifier';
-Syntax.IfStatement = 'IfStatement'
+Syntax.IfStatement = 'IfStatement';
+Syntax.SingleLineComment = 'SingleLineComment';
+Syntax.MultiLineComment = 'MultiLineComment';
