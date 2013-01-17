@@ -80,7 +80,6 @@ Parser.prototype.matchAssign = function() {
 }
 
 Parser.prototype.parse = function() {
-    this.p = 0;
     
     // set indent size
     for (var i = 0; i < this.tokens.length; i++) {
@@ -92,32 +91,47 @@ Parser.prototype.parse = function() {
         }
     }
     
+    return this.parseProgram();
+}
+
+Parser.prototype.parseProgram = function() {
+    
+    this.p = 0;
+    
     while (1) {
+        
         if (this.token.kind === Token.EOF) {
             this.consume();
             break;
         }
         
-        if (this.token.kind === Token.NEWLINE) {
-            this.consume();
-            continue;
-        }
-        
-        if (this.token.kind === Token.INDENT) {
-            this.expect(0);
-            continue;
-        }
-        
-        if (node = this.parseStatement()) {
+        var node = this.parseSourceElement();
+        if (node) {
             this.indent = 0;
             this.nodes.push(node);
-            continue;
         }
-        
-        this.assert('Unexpected token, ' + this.token.toString());
     }
     
     return this.nodes;
+}
+
+Parser.prototype.parseSourceElement = function() {
+    
+    if (this.token.kind === Token.NEWLINE) {
+        this.consume();
+        return;
+    }
+    
+    if (this.token.kind === Token.INDENT) {
+        this.expect(0);
+        return;
+    }
+    
+    if (node = this.parseStatement()) {
+        return node;
+    }
+    
+    this.assert('Unexpected token, ' + this.token.toString());
 }
 
 Parser.prototype.parseStatement = function() {
@@ -128,13 +142,21 @@ Parser.prototype.parseStatement = function() {
         return this.parseStatement();
     }
     
+    // syntax check around indent
     if (this.token.kind === Token.INDENT) {
-        // check indent
         if (this.indent_size * this.indent !== this.token.text) {
             this.assert('error around indent');
         } else {
             this.consume();
             return this.parseStatement();
+        }
+    }
+    
+    // syntax check around ident
+    if (this.token.kind === Token.IDENT) {
+        // ident statement only
+        if (this.lookahead(1).kind == Token.EOF || this.lookahead(1).kind == Token.NEWLINE) {
+            this.assert(this.token.toString() + ' Syntax error');
         }
     }
     
@@ -326,6 +348,7 @@ Parser.prototype.parseMemberExpression = function() {
     
     var expr = this.parsePrimaryExpression();
     
+    // parse list member
     if (this.match('[')) {
         var member = expr;
         this.consume();
@@ -347,17 +370,10 @@ Parser.prototype.parsePrimaryExpression = function() {
     if (this.token.kind === Token.IDENT) {
         var token = this.token;
         this.consume();
-        if (this.match('=') || this.lookback(2).text == '=' || this.match('[')) {
-            return {
-                type: Syntax.Identifier,
-                name: token.text 
-            };
-        }
-        // return {
-        //     type: Syntax.Identifier,
-        //     name: token.text 
-        // };
-        this.assert('Variable declaration　error, variable has to be initialized, asserted by parser.');
+        return {
+            type: Syntax.Identifier,
+            name: token.text 
+        };
     }
     
     if (this.token.kind === Token.NONE) {
