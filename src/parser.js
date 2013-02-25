@@ -100,7 +100,12 @@ Parser.prototype.parseProgram = function() {
     
     while (1) {
         
-        if (this.token.kind === Token.EOF) {
+        // if (this.token.kind === Token.EOF) {
+        //     this.consume();
+        //     break;
+        // }
+        
+        if (this.lookahead(1).kind === Token.EOF) {
             this.consume();
             break;
         }
@@ -124,7 +129,6 @@ Parser.prototype.parseSourceElement = function() {
     
     if (this.token.kind === Token.INDENT) {
         this.expect(0);
-        return;
     }
     
     if (node = this.parseStatement()) {
@@ -148,12 +152,15 @@ Parser.prototype.parseStatement = function() {
     
     // syntax check around indent
     if (this.token.kind === Token.INDENT) {
-        if (this.indent_size * this.indent !== this.token.text) {
-            this.assert('error around indent');
+        
+        if (this.indent_size * this.indent < this.token.text) {
+            this.indent++;
         } else {
-            this.consume();
-            return this.parseStatement();
+            this.indent--;
         }
+        
+        this.consume();
+        return this.parseStatement();
     }
     
     // syntax check around ident
@@ -185,12 +192,7 @@ Parser.prototype.parseIfStatement = function() {
     this.expect('if');
     
     var expr = this.parseExpression();
-    
-    this.indent++;
-    
-    var exprs = this.parseStatement();
-    
-    this.indent--;
+    var exprs = this.parseBlock();
     
     return {
         type: Syntax.IfStatement,
@@ -204,21 +206,53 @@ Parser.prototype.parseBlock = function() {
     
     var expr = this.parseStatementList();
     
+    
     return expr;
 }
 
 Parser.prototype.parseStatementList = function() {
     
-    var expr;
+    this.expect(':');
     
+    var exprs = [this.parseStatement()];
+    var indent = this.indent_size * this.indent;
     
-    
-    return expr;
+    while (1) {
+        
+        // ignore newline token
+        if (this.token.kind === Token.NEWLINE) {
+            this.consume();
+        }
+        
+        if (this.token.kind === Token.INDENT) {
+            if (this.token.text < indent) {
+                break;
+            }
+        }
+        
+        exprs.push(this.parseStatement());
+    }
+    return exprs;
 }
 
 Parser.prototype.parseExpression = function() {
     
     var expr = this.parseAssignmentExpression();
+    
+    if (this.match(',')) {
+        expr = {
+            type: Syntax.SequenceExpression,
+            expressions: [expr]
+        };
+        
+        while (1) {
+            if (!this.match(',')) {
+                break;
+            }
+            this.consume();
+            expr.expressions.push(this.parseExpression());
+        }
+    }
     
     return expr;
 }
@@ -445,7 +479,16 @@ Parser.prototype.parsePrimaryExpression = function() {
         if (this.match('{')) {
             return this.parseObjectLiteral();
         }
+        
+        if (this.match('(')) {
+            this.consume();
+            var expr = this.parseExpression();
+            this.expect(')');
+            return expr;
+        }
     }
+    
+    this.assert("unexpected token `" + this.token.text + "`");
 }
 
 Parser.prototype.parseArrayLiteral = function() {

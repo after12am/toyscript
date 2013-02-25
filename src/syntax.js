@@ -12,3 +12,4 @@ Syntax.Identifier = 'Identifier';
 Syntax.IfStatement = 'IfStatement';
 Syntax.SingleLineComment = 'SingleLineComment';
 Syntax.MultiLineComment = 'MultiLineComment';
+Syntax.SequenceExpression = 'SequenceExpression';

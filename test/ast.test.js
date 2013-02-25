@@ -77,6 +77,7 @@ test("expected indent error occured",function(){
         a = 1\
         ';
         var nodes = babe.parse(source);
+        console.log(nodes)
         ok(0, 'unexpected');
     } catch (e) {
         ok(1, 'expected indent error occured');
@@ -144,7 +145,17 @@ test("a = {1, 2}",function(){
     }
 });
 
-test("a = {'b':1} a['b'] = 1",function(){
+test("a = ",function(){
+    try {
+        var source = 'a = ';
+        var nodes = babe.parse(source);
+        ok(0, 'unexpected');
+    } catch (e) {
+        ok(1, 'expected error has occured');
+    }
+});
+
+test("a = {'b':1} a.b = 1",function(){
 var source = '\
 a = {"b":1}\
 a.b = 1\
@@ -175,3 +186,23 @@ var source = '\
     comment\n\
 ', nodes[0].type + ' is ok');
 });
+
+module('definition of conditions');
+
+test("if",function(){
+var source = "\
+if a:\n\
+    a = 2\n\
+    b = 2\n\
+";
+    var nodes = babe.parse(source);
+    ok(nodes[0].alternate === null);
+    ok(nodes[0].condition.value === 'a');
+    ok(nodes[0].statements.length === 2);
+    ok(nodes[0].statements[0].left.value == 'a');
+    ok(nodes[0].statements[0].right.value == 2);
+    ok(nodes[0].statements[1].left.value == 'b');
+    ok(nodes[0].statements[1].right.value == 2);
+});
+
+

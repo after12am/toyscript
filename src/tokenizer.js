@@ -33,7 +33,7 @@ Tokenizer.prototype.tokenize = function() {
             continue;
         }
         
-        // ignore colon
+        // ignore semicolon
         if (this.c == ';') {
             this.consume();
             continue;
@@ -222,9 +222,16 @@ Tokenizer.prototype.scanString = function(delimiter) {
 Tokenizer.prototype.scanPunctuator = function() {
     
     // 1character punctuator
+    
+    if (this.c === ':') {
+        var c = this.c;
+        this.consume();
+        return new Token(Token.COLON, c, new Location(this.line));
+    }
+    
     if (this.c === '{' || this.c === '}' || this.c === '(' ||
         this.c === ')' || this.c === '[' || this.c === ']' ||
-        this.c === ':' || this.c === ',' || this.c === '.') {
+        this.c === ',' || this.c === '.') {
         var c = this.c;
         this.consume();
         return new Token(Token.PUNCTUATOR, c, new Location(this.line));
