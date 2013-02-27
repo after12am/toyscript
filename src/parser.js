@@ -193,12 +193,21 @@ Parser.prototype.parseIfStatement = function() {
     
     var expr = this.parseExpression();
     var exprs = this.parseBlock();
+    var alternate = null;
+    
+    // expect indent token
+    this.expect(this.indent);
+    
+    if (this.match('else')) {
+        this.consume();
+        alternate = this.parseBlock();
+    }
     
     return {
         type: Syntax.IfStatement,
         condition: expr,
         statements: exprs,
-        alternate: null
+        alternate: alternate
     };
 }
 

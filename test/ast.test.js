@@ -1,5 +1,4 @@
-
-module('definition of property');
+module('property');
 
 test("a",function(){
     try {
@@ -168,7 +167,7 @@ a.b = 1\
     }
 });
 
-module('definition of comment');
+module('comment');
 
 test("# comment",function(){
     var source = '# comment';
@@ -187,7 +186,7 @@ var source = '\
 ', nodes[0].type + ' is ok');
 });
 
-module('definition of conditions');
+module('conditions');
 
 test("if",function(){
 var source = "\
@@ -205,4 +204,24 @@ if a:\n\
     ok(nodes[0].statements[1].right.value == 2);
 });
 
-
+test("else",function(){
+var source = "\
+if a:\n\
+    a = 2\n\
+    b = 2\n\
+else:\n\
+    c = 2\n\
+    d = 2\n\
+";
+    var nodes = babe.parse(source);
+    ok(nodes[0].condition.value === 'a');
+    ok(nodes[0].statements.length === 2);
+    ok(nodes[0].statements[0].left.value == 'a');
+    ok(nodes[0].statements[0].right.value == 2);
+    ok(nodes[0].statements[1].left.value == 'b');
+    ok(nodes[0].statements[1].right.value == 2);
+    ok(nodes[0].alternate[0].left.value == 'c');
+    ok(nodes[0].alternate[0].right.value == 2);
+    ok(nodes[0].alternate[1].left.value == 'd');
+    ok(nodes[0].alternate[1].right.value == 2);
+});
