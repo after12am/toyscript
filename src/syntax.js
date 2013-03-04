@@ -13,3 +13,6 @@ Syntax.IfStatement = 'IfStatement';
 Syntax.SingleLineComment = 'SingleLineComment';
 Syntax.MultiLineComment = 'MultiLineComment';
 Syntax.SequenceExpression = 'SequenceExpression';
+Syntax.BinaryExpression = 'BinaryExpression';
+Syntax.LogicalExpression = 'LogicalExpression';
+Syntax.ConditionalExpression = 'ConditionalExpression';

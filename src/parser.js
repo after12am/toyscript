@@ -155,10 +155,9 @@ Parser.prototype.parseStatement = function() {
         
         if (this.indent_size * this.indent < this.token.text) {
             this.indent++;
-        } else {
+        } else if (this.indent_size * this.indent > this.token.text) {
             this.indent--;
         }
-        
         this.consume();
         return this.parseStatement();
     }
@@ -183,24 +182,34 @@ Parser.prototype.parseStatement = function() {
         case Token.SINGLE_LINE_COMMENT:
             return this.parseComment();
         default:
+            console.log(this.token)
             this.assert('Unknown token ' + this.token);
     }
 }
 
 Parser.prototype.parseIfStatement = function() {
     
+    var indent = this.indent * this.indent_size;
+    
     this.expect('if');
     
     var expr = this.parseExpression();
+    this.expect(':');
     var exprs = this.parseBlock();
     var alternate = null;
     
     // expect indent token
-    this.expect(this.indent);
+    this.expect(indent);
     
     if (this.match('else')) {
         this.consume();
-        alternate = this.parseBlock();
+        
+        if (this.match(':')) {
+            this.consume();
+            alternate = this.parseBlock();
+        } else {
+            alternate = this.parseIfStatement();
+        }
     }
     
     return {
@@ -221,10 +230,8 @@ Parser.prototype.parseBlock = function() {
 
 Parser.prototype.parseStatementList = function() {
     
-    this.expect(':');
-    
     var exprs = [this.parseStatement()];
-    var indent = this.indent_size * this.indent;
+    var indent = this.indent * this.indent_size;
     
     while (1) {
         
@@ -234,6 +241,13 @@ Parser.prototype.parseStatementList = function() {
         }
         
         if (this.token.kind === Token.INDENT) {
+            
+            if (this.indent_size * this.indent < this.token.text) {
+                this.indent++;
+            } else if (this.indent_size * this.indent > this.token.text) {
+                this.indent--;
+            }
+            
             if (this.token.text < indent) {
                 break;
             }
@@ -248,6 +262,7 @@ Parser.prototype.parseExpression = function() {
     
     var expr = this.parseAssignmentExpression();
     
+    // parse function
     if (this.match(',')) {
         expr = {
             type: Syntax.SequenceExpression,
@@ -290,6 +305,17 @@ Parser.prototype.parseAssignmentExpression = function() {
 Parser.prototype.parseConditionalExpression = function() {
     
     var expr = this.parseLogicalORExpression();
+    var ope = this.token.text;
+    
+    if (ope == 'in') {
+        this.consume();
+        expr = {
+            type: Syntax.ConditionalExpression,
+            operator: 'in',
+            left: expr,
+            right: this.parseConditionalExpression()
+        }
+    }
     
     return expr;
 }
@@ -297,6 +323,17 @@ Parser.prototype.parseConditionalExpression = function() {
 Parser.prototype.parseLogicalORExpression = function() {
     
     var expr = this.parseLogicalANDExpression();
+    var or = this.token.text;
+    
+    if (or == 'or') {
+        this.consume();
+        expr = {
+            type: Syntax.LogicalExpression,
+            operator: 'or',
+            left: expr,
+            right: this.parseBitwiseORExpression()
+        }
+    }
     
     return expr;
 }
@@ -305,6 +342,17 @@ Parser.prototype.parseLogicalORExpression = function() {
 Parser.prototype.parseLogicalANDExpression = function() {
     
     var expr = this.parseBitwiseORExpression();
+    var and = this.token.text;
+    
+    if (and == 'and') {
+        this.consume();
+        expr = {
+            type: Syntax.LogicalExpression,
+            operator: 'and',
+            left: expr,
+            right: this.parseBitwiseORExpression()
+        }
+    }
     
     return expr;
 }
@@ -333,6 +381,18 @@ Parser.prototype.parseBitwiseANDExpression = function() {
 Parser.prototype.parseEqualityExpression = function() {
     
     var expr = this.parseRelationalExpression();
+    var ope = this.token.text + this.lookahead(1).text;
+    
+    if (ope == '==' || ope == '!=' || ope == '!==' || ope == '===') {
+        this.consume();
+        this.consume();
+        expr = {
+            type: Syntax.BinaryExpression,
+            operator: ope,
+            left: expr,
+            right: this.parseRelationalExpression()
+        }
+    }
     
     return expr;
 }

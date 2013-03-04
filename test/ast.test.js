@@ -225,3 +225,80 @@ else:\n\
     ok(nodes[0].alternate[1].left.value == 'd');
     ok(nodes[0].alternate[1].right.value == 2);
 });
+
+test("if equal condition",function(){
+var source = "\
+if a == 1:\n\
+    a = 2\n\
+";
+    var nodes = babe.parse(source);
+    ok(nodes[0].condition.left.value === 'a');
+    ok(nodes[0].condition.operator === '==');
+    ok(nodes[0].condition.right.value === '1');
+    ok(nodes[0].condition.type === 'BinaryExpression');
+});
+
+test("else if",function(){
+var source = "\
+if a:\n\
+    a = 2\n\
+else if b == 1:\n\
+    c = 2\n\
+";
+    var nodes = babe.parse(source);
+    ok(nodes[0].alternate.condition.left.value === 'b');
+    ok(nodes[0].alternate.condition.operator === '==');
+    ok(nodes[0].alternate.condition.right.value === '1');
+    ok(nodes[0].alternate.condition.type === 'BinaryExpression');
+    ok(nodes[0].alternate.statements[0].left.value === 'c');
+    ok(nodes[0].alternate.statements[0].operator === '=');
+    ok(nodes[0].alternate.statements[0].right.value === '2');
+});
+
+test("if condition and",function(){
+var source = "\
+if a and 1:\n\
+    a = 0\n\
+";
+    var nodes = babe.parse(source);
+    ok(nodes[0].condition.left.value === 'a');
+    ok(nodes[0].condition.operator === 'and');
+    ok(nodes[0].condition.right.value === '1');
+    ok(nodes[0].condition.type === 'LogicalExpression');
+});
+
+test("if condition or",function(){
+var source = "\
+if a or 1:\n\
+    a = 0\n\
+";
+    var nodes = babe.parse(source);
+    ok(nodes[0].condition.left.value === 'a');
+    ok(nodes[0].condition.operator === 'or');
+    ok(nodes[0].condition.right.value === '1');
+    ok(nodes[0].condition.type === 'LogicalExpression');
+});
+
+test("if condition in",function(){
+var source = "\
+if a in 1:\n\
+    a = 0\n\
+";
+    var nodes = babe.parse(source);
+    ok(nodes[0].condition.left.value === 'a');
+    ok(nodes[0].condition.operator === 'in');
+    ok(nodes[0].condition.right.value === '1');
+    ok(nodes[0].condition.type === 'ConditionalExpression');
+});
+
+test("if condition in",function(){
+var source = "\
+if a in 1:\n\
+    a = 0\n\
+";
+    var nodes = babe.parse(source);
+    ok(nodes[0].condition.left.value === 'a');
+    ok(nodes[0].condition.operator === 'in');
+    ok(nodes[0].condition.right.value === '1');
+    ok(nodes[0].condition.type === 'ConditionalExpression');
+});
