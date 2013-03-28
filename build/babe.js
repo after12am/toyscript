@@ -530,11 +530,23 @@ Parser.prototype.parseConditionalExpression = function() {
     
     if (ope == 'in') {
         this.consume();
+        
+        var right = this.parseConditionalExpression();
+        
+        switch (right.type) {
+            case 'ArrayLiteral':
+            case 'Identifier':
+                break;
+            default:
+                this.assert('Syntax Error, ' + right.value);
+                break;
+        }
+        
         expr = {
             type: Syntax.ConditionalExpression,
             operator: 'in',
             left: expr,
-            right: this.parseConditionalExpression()
+            right: right
         }
     }
     
