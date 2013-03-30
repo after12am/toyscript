@@ -5,7 +5,7 @@
  * Copyright 2013 Satoshi Okami
  * Released under the MIT license
  */
-var babe = (function() {
+module.exports = (function() {
 var exports = {};
 
 // src/ast.js

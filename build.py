@@ -3,6 +3,7 @@
 module = 'babe'
 input_path = 'src/'
 output_path = 'build/babe.js'
+output_node_path = 'build/node-babe.js'
 
 import re, os, sys, time, tempfile
 
@@ -10,7 +11,7 @@ header = '''/*
  * babe.js
  * https://github.com/after12am/babe
  *
- * Copyright 2012 Satoshi Okami
+ * Copyright 2013 Satoshi Okami
  * Released under the MIT license
  */
 '''
@@ -40,22 +41,31 @@ def compress(text):
     text = re.sub(r"('([^'\\]|\\(.|\n))*'|\"([^\"\\]|\\(.|\n))*\")", compress, text) # replace all strings
     return text
 
+def release():
+    f1, temp1_path = tempfile.mkstemp()
+    f2, temp2_path = tempfile.mkstemp()
+    os.write(f1, data)
+    os.close(f1)
+    os.close(f2)
+    os.system('java -jar /usr/local/bin/closure --js %s --js_output_file %s' % (temp1_path, temp2_path))
+    os.remove(temp1_path)
+    data = open(temp2_path).read()
+    os.remove(temp2_path)
+    return compress(data)
+
 def build():
     data = 'var %s = (function() {\nvar exports = {};\n\n' % module + compile(sources()) + '\nreturn exports;\n})();\n'
     if 'release' in sys.argv:
-        f1, temp1_path = tempfile.mkstemp()
-        f2, temp2_path = tempfile.mkstemp()
-        os.write(f1, data)
-        os.close(f1)
-        os.close(f2)
-        os.system('java -jar /usr/local/bin/closure --js %s --js_output_file %s' % (temp1_path, temp2_path))
-        os.remove(temp1_path)
-        data = open(temp2_path).read()
-        os.remove(temp2_path)
-        data = compress(data)
+        data = release(data)
     data = header + data
     open(output_path, 'w').write(data)
     print 'built %s (%u lines)' % (output_path, len(data.split('\n')))
+    data = 'module.exports = (function() {\nvar exports = {};\n\n' + compile(sources()) + '\nreturn exports;\n})();\n'
+    if 'release' in sys.argv:
+        data = release(data)
+    data = header + data
+    open(output_node_path, 'w').write(data)
+    print 'built %s (%u lines)' % (output_node_path, len(data.split('\n')))
 
 def stat():
     return [os.stat(file).st_mtime for file in sources()]

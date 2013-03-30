@@ -1,4 +1,6 @@
-module('property');
+var sprintf = require('sprintf').sprintf;
+
+QUnit.module('property');
 
 test("a",function(){
     try {
@@ -6,7 +8,7 @@ test("a",function(){
         var nodes = babe.parse(source);
         ok(0, 'Variable declaration　error has not occuerd.');
     } catch(e) {
-        ok(1, 'Variable declaration　error has occuerd.');
+        ok(1, e);
     }
 });
 
@@ -167,7 +169,7 @@ a.b = 1\
     }
 });
 
-module('comment');
+QUnit.module('comment');
 
 test("# comment",function(){
     var source = '# comment';
@@ -186,7 +188,7 @@ var source = '\
 ', nodes[0].type + ' is ok');
 });
 
-module('conditions');
+QUnit.module('conditions');
 
 test("if",function(){
 var source = "\

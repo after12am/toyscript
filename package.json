@@ -1,8 +1,9 @@
 {
     "name": "babe.js",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "devDependencies": {
-        "qunit": "0.5.15",
-        "jquery": "1.8.3"
+        "grunt-node-qunit": "*",
+        "qunit": "*",
+        "sprintf": "*"
     }
 }
