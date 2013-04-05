@@ -1,10 +1,16 @@
 var Lexer = function(source) {
     this.source = source || '';
     this.p = 0;
+    this.column = 1;
     this.c = this.source[this.p];
 }
 
 Lexer.prototype.consume = function() {
+    if (this.c == '\n' || this.c == '\r') {
+        this.column = 0;
+    } else {
+        this.column++;
+    }
     this.p++;
     if (this.p < this.source.length) {
         this.c = this.source[this.p];

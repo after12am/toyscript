@@ -56,6 +56,14 @@ Tokenizer.prototype.tokenize = function() {
         }
         
         if (this.isDigit(this.c)) {
+            
+            if (this.isLetter(this.lookahead(1)) && this.lookahead(1) !== 'EOF') {
+                var ss = this.c;
+                this.consume();
+                var token = this.scanIdent();
+                var ss = ss + token.text;
+                throw 'Line ' + this.line + ': Unknown token \'' + ss + '\', asserted by tokenizer';
+            }
             if (token = this.scanDigit()) {
                 tokens.push(token);
                 continue;
@@ -63,8 +71,7 @@ Tokenizer.prototype.tokenize = function() {
         }
         
         if (this.c === '\'' || this.c == '"') {
-            var deli = this.c;
-            if (token = this.scanString(deli)) {
+            if (token = this.scanString(this.c)) {
                 tokens.push(token);
                 continue;
             }
@@ -80,12 +87,17 @@ Tokenizer.prototype.tokenize = function() {
             continue;
         }
         
+        if (token = this.scanOperator()) {
+            tokens.push(token);
+            continue;
+        }
+        
         if (token = this.scanComment()) {
             tokens.push(token);
             continue;
         }
         
-        if (token = this.scanOperator()) {
+        if (token = this.scanRegularExpression()) {
             tokens.push(token);
             continue;
         }
@@ -94,7 +106,8 @@ Tokenizer.prototype.tokenize = function() {
         this.consume();
     }
     
-    tokens.push(new Token(Token.EOF, '', new Location(this.line)));
+    tokens.push(new Token(Token.EOF, '', new Location(this.line, this.column)));
+    
     return tokens;
 }
 
@@ -108,7 +121,8 @@ Tokenizer.prototype.scanLineTerminator = function() {
         c += this.lookahead(1);
         this.consume();
     }
-    return new Token(Token.NEWLINE, c, new Location(this.line));
+    
+    return new Token(Token.NEWLINE, c, new Location(this.line, this.column));
 }
 
 Tokenizer.prototype.scanIndent = function() {
@@ -120,7 +134,8 @@ Tokenizer.prototype.scanIndent = function() {
         else break;
         this.consume();
     }
-    return new Token(Token.INDENT, size, new Location(this.line));
+    
+    return new Token(Token.INDENT, size, new Location(this.line, this.column));
 }
 
 Tokenizer.prototype.scanIdent = function() {
@@ -131,7 +146,7 @@ Tokenizer.prototype.scanIdent = function() {
         this.consume();
         this.consume();
         this.consume();
-        return new Token(Token.NONE, ident, new Location(this.line));
+        return new Token(Token.NONE, ident, new Location(this.line, this.column));
     }
     
     var ident = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3);
@@ -140,7 +155,7 @@ Tokenizer.prototype.scanIdent = function() {
         this.consume();
         this.consume();
         this.consume();
-        return new Token(Token.BOOLEAN, ident, new Location(this.line));
+        return new Token(Token.BOOLEAN, ident, new Location(this.line, this.column));
     }
     
     var ident = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3) + this.lookahead(4);
@@ -150,7 +165,7 @@ Tokenizer.prototype.scanIdent = function() {
         this.consume();
         this.consume();
         this.consume();
-        return new Token(Token.BOOLEAN, ident, new Location(this.line));
+        return new Token(Token.BOOLEAN, ident, new Location(this.line, this.column));
     }
     
     var ident = this.c + this.lookahead(1) + this.lookahead(2);
@@ -158,7 +173,7 @@ Tokenizer.prototype.scanIdent = function() {
         this.consume();
         this.consume();
         this.consume();
-        return new Token(Token.NAN, ident, new Location(this.line));
+        return new Token(Token.NAN, ident, new Location(this.line, this.column));
     }
     
     var ident = this.c
@@ -169,7 +184,7 @@ Tokenizer.prototype.scanIdent = function() {
         this.consume(); this.consume(); this.consume();
         this.consume(); this.consume(); this.consume();
         this.consume(); this.consume();
-        return new Token(Token.INFINITY, ident, new Location(this.line));
+        return new Token(Token.INFINITY, ident, new Location(this.line, this.column));
     }
     
     var ident = '';
@@ -182,7 +197,8 @@ Tokenizer.prototype.scanIdent = function() {
             break;
         }
     }
-    return new Token(Token.IDENT, ident, new Location(this.line));
+    
+    return new Token(Token.IDENTIFIER, ident, new Location(this.line, this.column));
 }
 
 Tokenizer.prototype.scanDigit = function() {
@@ -197,7 +213,8 @@ Tokenizer.prototype.scanDigit = function() {
             break;
         }
     }
-    return new Token(Token.DIGIT, digit, new Location(this.line));
+    
+    return new Token(Token.DIGIT, digit, new Location(this.line, this.column));
 }
 
 Tokenizer.prototype.scanString = function(delimiter) {
@@ -207,7 +224,7 @@ Tokenizer.prototype.scanString = function(delimiter) {
     
     while (1) {
         if (this.c === Token.EOF || this.isLineTerminator(this.c)) {
-            throw ': on line ' + this.line + ': Unexpected token ILLEGAL';
+            throw 'Line ' + this.line + ' Column ' + this.column + ': Unexpected token ILLEGAL';
         }
         if (this.c === delimiter) {
             this.consume();
@@ -216,7 +233,8 @@ Tokenizer.prototype.scanString = function(delimiter) {
         ss += this.c;
         this.consume();
     }
-    return new Token(Token.STRING, ss, new Location(this.line));
+    
+    return new Token(Token.STRING, ss, new Location(this.line, this.column));
 }
 
 Tokenizer.prototype.scanPunctuator = function() {
@@ -226,7 +244,7 @@ Tokenizer.prototype.scanPunctuator = function() {
     if (this.c === ':') {
         var c = this.c;
         this.consume();
-        return new Token(Token.COLON, c, new Location(this.line));
+        return new Token(Token.PUNCTUATOR, c, new Location(this.line, this.column));
     }
     
     if (this.c === '{' || this.c === '}' || this.c === '(' ||
@@ -234,7 +252,7 @@ Tokenizer.prototype.scanPunctuator = function() {
         this.c === ',' || this.c === '.') {
         var c = this.c;
         this.consume();
-        return new Token(Token.PUNCTUATOR, c, new Location(this.line));
+        return new Token(Token.PUNCTUATOR, c, new Location(this.line, this.column));
     }
 }
 
@@ -245,7 +263,8 @@ Tokenizer.prototype.scanOperator = function() {
     if (op === '>>>' || op === '<<<') {
         this.consume();
         this.consume();
-        return new Token(Token.OPERATOR, op, new Location(this.line));
+        this.consume();
+        return new Token(Token.PUNCTUATOR, op, new Location(this.line, this.column));
     }
     
     // 2character operator
@@ -253,7 +272,8 @@ Tokenizer.prototype.scanOperator = function() {
     if (op === '++' || op === '--' || op === '>>' ||
         op === '<<' || op === '&&' || op === '||') {
         this.consume();
-        return new Token(Token.OPERATOR, op, new Location(this.line));
+        this.consume();
+        return new Token(Token.PUNCTUATOR, op, new Location(this.line, this.column));
     }
     
     // 1character operator
@@ -264,7 +284,7 @@ Tokenizer.prototype.scanOperator = function() {
         op === '|' || op === '^' || op === '~' ||
         op === '?') {
         this.consume();
-        return new Token(Token.OPERATOR, op, new Location(this.line));
+        return new Token(Token.PUNCTUATOR, op, new Location(this.line, this.column));
     }
 }
 
@@ -277,7 +297,7 @@ Tokenizer.prototype.scanAssign = function() {
         this.consume();
         this.consume();
         this.consume();
-        return new Token(Token.ASSIGN, op, new Location(this.line));
+        return new Token(Token.PUNCTUATOR, op, new Location(this.line, this.column));
     }
     
     // 3character assignment
@@ -286,27 +306,26 @@ Tokenizer.prototype.scanAssign = function() {
         this.consume();
         this.consume();
         this.consume();
-        return new Token(Token.ASSIGN, op, new Location(this.line));
+        return new Token(Token.PUNCTUATOR, op, new Location(this.line, this.column));
     }
     
     // 2character assignment
     var op = this.c + this.lookahead(1);
     if (op === '*=' || op === '/=' || op === '%=' || 
         op === '+=' || op === '-=' || op === '&=' || 
-        op === '^=' || op === '|=') {
+        op === '^=' || op === '|=' || op === '<=' ||
+        op === '>=') {
         this.consume();
         this.consume();
-        return new Token(Token.ASSIGN, op, new Location(this.line));
+        return new Token(Token.PUNCTUATOR, op, new Location(this.line, this.column));
     }
     
     // 1character assignment
     var op = this.c;
     if (op === '=') {
         this.consume();
-        return new Token(Token.ASSIGN, op, new Location(this.line));
+        return new Token(Token.PUNCTUATOR, op, new Location(this.line, this.column));
     }
-    
-    return false;
 }
 
 Tokenizer.prototype.scanComment = function() {
@@ -319,7 +338,7 @@ Tokenizer.prototype.scanComment = function() {
             comment += this.c;
             this.consume();
         }
-        return new Token(Token.SINGLE_LINE_COMMENT, comment, new Location(this.line));
+        return new Token(Token.SINGLE_LINE_COMMENT, comment, new Location(this.line, this.column));
     }
     
     var sign = this.c + this.lookahead(1);
@@ -334,6 +353,10 @@ Tokenizer.prototype.scanComment = function() {
         }
         this.consume();
         this.consume();
-        return new Token(Token.SINGLE_LINE_COMMENT, comment, new Location(this.line));
+        return new Token(Token.SINGLE_LINE_COMMENT, comment, new Location(this.line, this.column));
     }
+}
+
+Tokenizer.prototype.scanRegularExpression = function() {
+    // not implemented
 }
