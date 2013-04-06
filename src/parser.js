@@ -10,37 +10,7 @@ var Parser = function(tokens, log) {
     this.nodes = [];
 }
 
-Parser.prototype.match = function(text) {
-    return (this.token.text == text);
-}
-
-Parser.prototype.matchAssign = function() {
-    
-    var op = this.token.text;
-    
-    // 4character assignment
-    if (op === '>>>=') {
-        return op;
-    }
-    
-    // 3character assignment
-    if (op === '<<=' || op === '>>=' || op === '!==' || op === '===') {
-        return op;
-    }
-    
-    // 2character assignment
-    if (op === '*=' || op === '/=' || op === '%=' || 
-        op === '+=' || op === '-=' || op === '&=' || 
-        op === '^=' || op === '|=') {
-        return op;
-    }
-    
-    // 1character assignment
-    if (op === '=') {
-        return op;
-    }
-}
-
+Parser.prototype = new Lexer();
 Parser.prototype.consume = function(k) {
     k = k || 1;
     while (k > 0) {
@@ -52,6 +22,14 @@ Parser.prototype.consume = function(k) {
         }
         k--;
     }
+}
+
+Parser.prototype.match = function(text) {
+    return (this.token.text === text);
+}
+
+Parser.prototype.matchKind = function(kind) {
+    return (this.token.kind === kind);
 }
 
 Parser.prototype.expect = function(text) {
@@ -85,7 +63,7 @@ Parser.prototype.updateIndent = function() {
 }
 
 Parser.prototype.parse = function() {
-    // set indent size
+    // store indent size
     for (var i = 0; i < this.tokens.length; i++) {
         if (this.tokens[i].kind === Token.INDENT) {
             if (this.tokens[i].text > 0) {
@@ -113,21 +91,21 @@ Parser.prototype.parseProgram = function() {
 */
 Parser.prototype.parseSourceElements = function() {
     
-    // check indent
-    this.expect(0);
-    
     while (1) {
         
         // the first token would be Token.Indent. 
         if (this.lookahead(1).kind === Token.EOF) {
-            this.consume();
             break;
         }
         
-        var node = this.parseSourceElement();
-        if (node) {
-            this.indent = 0;
-            this.nodes.push(node);
+        // zero indent
+        this.expect(0);
+        this.indent = 0;
+        this.nodes.push(this.parseSourceElement());
+        
+        // line terminator of eof
+        if (this.matchKind(Token.NEWLINE)) {
+            this.consume();
         }
     }
     return this.nodes;
@@ -183,6 +161,7 @@ Parser.prototype.parseStatement = function() {
         return this.parseStatement();
     }
     
+    /*
     if (this.token.kind === Token.NEWLINE) {
         // not implement
         return this.parseEmptyStatement();
@@ -217,25 +196,44 @@ Parser.prototype.parseStatement = function() {
         return this.parseTryStatement();
     }
     
-    if (this.match(':')) {console.log(this.token)
+    if (this.token.kind === Token.SINGLE_LINE_COMMENT) {
+        return this.parseComment();
+    }
+    */
+    
+    if (this.match(':')) {
         this.consume();
         this.expectKind(Token.NEWLINE);
         return this.parseBlock();
     }
     
-    // is this correct to write here?
-    if (this.token.kind === Token.SINGLE_LINE_COMMENT) {
-        return this.parseComment();
-    }
+    
     
     // not implement
     // VariableStatement
     // ExpressionStatement
     
-    return this.parseExpression();
+    
+    switch (this.token.kind) {
+    case Token.NEWLINE: return this.parseEmptyStatement();
+    case Token.KEYWORDS.IF: return this.parseIfStatement();
+    case Token.KEYWORDS.WHILE: 
+    case Token.KEYWORDS.FOR: return this.parseIterationStatement();
+    case Token.KEYWORDS.CONTINUE: return this.parseContinueStatement();
+    case Token.KEYWORDS.BREAK: return this.parseBreakStatement();
+    case Token.KEYWORDS.RETURN: return this.parseReturnStatement();
+    case Token.KEYWORDS.RAISE: return this.parseRaiseStatement();
+    case Token.KEYWORDS.TRY: return this.parseTryStatement();
+    case Token.SINGLE_LINE_COMMENT: 
+    case Token.MULTI_LINE_COMMENT: return this.parseComment(); // is this correct to write here?
+    default: return this.parseExpression();
+    }
 }
 
 Parser.prototype.parseEmptyStatement = function() {
+    
+    // not implement
+    
     // plays a role of EmptyStatement.
     var token = this.token.text;
     this.consume();
@@ -315,13 +313,16 @@ Parser.prototype.parseIfStatement = function() {
         throw this.token.location.toString() + ', SyntaxError: No statement';
     }
     
-    // expect indent token
-    this.expect(indent);
+    if (this.matchKind(Token.INDENT)) {
+        if (!this.match(indent)) {
+            throw 'Unexpecting indent size';
+        }
+        this.consume();
+    }
     
     if (this.match('else')) {
         this.consume();
-        // else if
-        // else
+        // else if || else
         alternate = this.parseStatement();
     }
     
@@ -656,7 +657,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         };
     }
     
-    if (this.token.kind === Token.NONE || this.token.kind === Token.BOOLEAN
+    if (this.token.kind === Token.KEYWORDS.NONE || this.token.kind === Token.BOOLEAN
      || this.token.kind === Token.DIGIT || this.token.kind === Token.STRING) {
         return this.parseLiteral();
     }
@@ -698,7 +699,7 @@ Parser.prototype.parsePrimaryExpression = function() {
 */
 Parser.prototype.parseLiteral = function() {
     
-    if (this.token.kind === Token.NONE) {
+    if (this.token.kind === Token.KEYWORDS.NONE) {
         var token = this.token;
         this.consume();
         return {
@@ -1436,7 +1437,8 @@ Parser.prototype.parseAssignmentExpression = function() {
     var expr = this.parseConditionalExpression();
     
     // AssignmentOperator
-    if (assign = this.matchAssign()) {
+    if (this.matchAssign(this.token.text)) {
+        var assign = this.token.text;
         this.consume();
         
         // not implement

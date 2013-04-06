@@ -8,9 +8,9 @@ Token.prototype.toString = function() {
     return this.location.toString() + ' kind:' + this.kind + ' text:' + this.text;
 }
 
-//----------------------------------------
-// TOKEN LIST
-//----------------------------------------
+/*
+    Token of internal definition
+*/
 Token.EOF = 'EOF';
 Token.NEWLINE = 'NEWLINE';
 Token.INDENT = 'INDENT';
@@ -23,41 +23,33 @@ Token.ASSIGN = 'ASSIGN';
 Token.COLON = 'COLON';
 Token.SINGLE_LINE_COMMENT = 'SINGLE_LINE_COMMENT';
 Token.MULTI_LINE_COMMENT = 'MULTI_LINE_COMMENT';
-
-//----------------------------------------
-// KEYWORD LIST
-//----------------------------------------
-Token.KEYWORDS = [];
-Token.KEYWORDS.TYPEOF = 'TYPEOF';
-Token.KEYWORDS.INSTANCEOF = 'INSTANCEOF';
-Token.KEYWORDS.DELETE = 'DELETE';
-Token.KEYWORDS.NEW = 'NEW';
-Token.KEYWORDS.TRY = 'TRY';
-Token.KEYWORDS.CATCH = 'CATCH';
-Token.KEYWORDS.RAISE = 'RAISE';
-Token.KEYWORDS.EXTENDS = 'EXTENDS';
-Token.KEYWORDS.AND = 'AND';
-Token.KEYWORDS.OR = 'OR';
-Token.KEYWORDS.XOR = 'XOR';
-Token.KEYWORDS.IN = 'IN';
-Token.KEYWORDS.IS = 'IS';
-Token.KEYWORDS.NOT = 'NOT';
-Token.KEYWORDS.RETURN = 'RETURN';
-Token.KEYWORDS.IF = 'IF';
-Token.KEYWORDS.ELIF = 'ELIF';
-Token.KEYWORDS.ELSE = 'ELSE';
-Token.KEYWORDS.WHILE = 'WHILE';
-Token.KEYWORDS.FOR = 'FOR';
-Token.KEYWORDS.CONTINUE = 'CONTINUE';
-Token.KEYWORDS.BREAK = 'BREAK';
-Token.KEYWORDS.CLASS = 'CLASS';
-//Token.KEYWORDS.NULL = 'NULL';
-Token.KEYWORDS.THIS = 'THIS';
-Token.KEYWORDS.TRUE = 'TRUE';
-Token.KEYWORDS.FALSE = 'FALSE';
-
-
-Token.NONE = 'NONE';
-Token.NAN = 'NAN';
 Token.BOOLEAN = 'BOOLEAN';
-Token.INFINITY = 'INFINITY';
+
+/*
+    Keywords
+*/
+Token.KEYWORDS = [];
+Token.KEYWORDS.AND = 'and';
+Token.KEYWORDS.BREAK = 'break';
+Token.KEYWORDS.CATCH = 'catch';
+Token.KEYWORDS.CLASS = 'class';
+Token.KEYWORDS.CONTINUE = 'continue';
+Token.KEYWORDS.DELETE = 'delete';
+Token.KEYWORDS.ELSE = 'else';
+Token.KEYWORDS.DEF = 'def';
+Token.KEYWORDS.FINALLY = 'finally';
+Token.KEYWORDS.FOR = 'for';
+Token.KEYWORDS.IF = 'if';
+Token.KEYWORDS.IN = 'in';
+Token.KEYWORDS.IS = 'is';
+Token.KEYWORDS.NEW = 'new';
+Token.KEYWORDS.NOT = 'not';
+Token.KEYWORDS.OR = 'or';
+Token.KEYWORDS.RETURN = 'return';
+Token.KEYWORDS.THIS = 'this';
+Token.KEYWORDS.TRY = 'try';
+Token.KEYWORDS.RAISE = 'raise';
+Token.KEYWORDS.VOID = 'void';
+Token.KEYWORDS.WHILE = 'while';
+Token.KEYWORDS.XOR = 'xor';
+Token.KEYWORDS.NONE = 'none';

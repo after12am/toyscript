@@ -1,0 +1,17 @@
+
+[tokenizer.js]
+
+* have to implement remain about 7.8.3 Numeric Literals
+* check whether completely implemented 7.8.4 String Literals
+* have to implement 7.8.5 Regular Expression Literals
+
+
+[build-in]
+
+* implement build in function by reference to 8.6 Object type
+* implement build in function by reference to underscore.js and python
+
+
+[caution]
+
+* not have to implement 7.9.2 Examples of Automatic Semicolon Insertion

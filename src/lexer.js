@@ -1,36 +1,33 @@
-var Lexer = function(source) {
-    this.source = source || '';
-    this.p = 0;
-    this.column = 1;
-    this.c = this.source[this.p];
+var Lexer = function() {
+    
 }
 
-Lexer.prototype.consume = function() {
-    if (this.c == '\n' || this.c == '\r') {
-        this.column = 0;
-    } else {
-        this.column++;
-    }
-    this.p++;
-    if (this.p < this.source.length) {
-        this.c = this.source[this.p];
-    } else {
-        this.c = Token.EOF;
-    }
-}
+/*
+    7.2 White Space
 
-Lexer.prototype.lookahead = function(k) {
-    if (this.p + k < this.source.length) {
-        return this.source[this.p + k];
-    } else {
-        return Token.EOF;
-    }
-}
-
-// issue: change to class method from instance method 
-
+    WhiteSpace ::
+        <TAB>
+        <VT>
+        <FF>
+        <SP>
+        <NBSP>
+        <USP>
+*/
 Lexer.prototype.isWhiteSpace = function(c) {
-    return c.match(/\s/);
+    return c.match(/^\s$/) && !this.isLineTerminator(c);
+}
+
+/*
+    7.3 Line Terminators
+    
+    LineTerminator ::
+        <LF>
+        <CR>
+        <LS>
+        <PS>
+*/
+Lexer.prototype.isLineTerminator = function(c) {
+    return c === '\n' || c === '\r' || c === '\u2028' || c === '\u2029';
 }
 
 Lexer.prototype.isDigit = function(c) {
@@ -41,6 +38,29 @@ Lexer.prototype.isLetter = function(c) {
     return c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_" || c === "$";
 }
 
-Lexer.prototype.isLineTerminator = function(c) {
-    return c == '\n' || c == '\r';// || c == '\r\n';
+Lexer.prototype.matchAssign = function(op) {
+    
+    // 4character assignment
+    if (op === '>>>=') {
+        return true;
+    }
+    
+    // 3character assignment
+    if (op === '<<=' || op === '>>=' || op === '!==' || op === '===') {
+        return true;
+    }
+    
+    // 2character assignment
+    if (op === '*=' || op === '/=' || op === '%=' || 
+        op === '+=' || op === '-=' || op === '&=' || 
+        op === '^=' || op === '|=') {
+        return true;
+    }
+    
+    // 1character assignment
+    if (op === '=') {
+        return true;
+    }
+    
+    return false;
 }
