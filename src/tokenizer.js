@@ -56,13 +56,13 @@ Tokenizer.prototype.tokenize = function() {
         }
         
         if (this.isDigit(this.c)) {
-            
             if (this.isLetter(this.lookahead(1)) && this.lookahead(1) !== 'EOF') {
+                var location = new Location(this.line, this.column);
                 var ss = this.c;
                 this.consume();
                 var token = this.scanIdent();
                 var ss = ss + token.text;
-                throw 'Line ' + this.line + ': Unknown token \'' + ss + '\', asserted by tokenizer';
+                throw new Message(location, Message.IllegalIdent).toString();
             }
             if (token = this.scanDigit()) {
                 tokens.push(token);
@@ -102,11 +102,11 @@ Tokenizer.prototype.tokenize = function() {
             continue;
         }
         
-        throw 'line ' + this.line + ': Unknown token \'' + this.c + '\', asserted by tokenizer';
+        throw new Message(new Location(this.line, this.column), Message.UnknownToken, this.c).toString();
         this.consume();
     }
     
-    tokens.push(new Token(Token.EOF, '', new Location(this.line, this.column)));
+    tokens.push(new Token(Token.EOF, '', new Location(this.line, ++this.column)));
     
     return tokens;
 }
@@ -168,6 +168,7 @@ Tokenizer.prototype.scanIdent = function() {
         return new Token(Token.BOOLEAN, ident, new Location(this.line, this.column));
     }
     
+    /*
     var ident = this.c + this.lookahead(1) + this.lookahead(2);
     if (ident === 'NaN') {
         this.consume();
@@ -186,6 +187,7 @@ Tokenizer.prototype.scanIdent = function() {
         this.consume(); this.consume();
         return new Token(Token.INFINITY, ident, new Location(this.line, this.column));
     }
+    */
     
     var ident = '';
     
@@ -193,9 +195,9 @@ Tokenizer.prototype.scanIdent = function() {
         if (this.isLetter(this.c) || this.isDigit(this.c)) {
             ident += this.c;
             this.consume();
-        } else {
-            break;
+            continue;
         }
+        break;
     }
     
     return new Token(Token.IDENTIFIER, ident, new Location(this.line, this.column));
@@ -220,11 +222,12 @@ Tokenizer.prototype.scanDigit = function() {
 Tokenizer.prototype.scanString = function(delimiter) {
     
     var ss = '';
+    var location = new Location(this.line, this.column);
     this.consume();
     
     while (1) {
         if (this.c === Token.EOF || this.isLineTerminator(this.c)) {
-            throw 'Line ' + this.line + ' Column ' + this.column + ': Unexpected token ILLEGAL';
+            throw new Message(location, Message.UnexpectedString).toString();
         }
         if (this.c === delimiter) {
             this.consume();

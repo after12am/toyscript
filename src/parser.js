@@ -19,22 +19,16 @@ Parser.prototype.matchAssign = function() {
     var op = this.token.text;
     
     // 4character assignment
-    // var op = this.token.text + this.lookahead(1).text + this.lookahead(2).text + this.lookahead(3).text;
     if (op === '>>>=') {
         return op;
     }
     
     // 3character assignment
-    // var op = this.token.text + this.lookahead(1).text + this.lookahead(2).text;
     if (op === '<<=' || op === '>>=' || op === '!==' || op === '===') {
         return op;
     }
     
     // 2character assignment
-    // var op = this.token.text + this.lookahead(1).text;
-    
-    //console.log(op)
-    
     if (op === '*=' || op === '/=' || op === '%=' || 
         op === '+=' || op === '-=' || op === '&=' || 
         op === '^=' || op === '|=') {
@@ -42,7 +36,6 @@ Parser.prototype.matchAssign = function() {
     }
     
     // 1character assignment
-    // var op = this.token.text;
     if (op === '=') {
         return op;
     }
@@ -63,7 +56,14 @@ Parser.prototype.consume = function(k) {
 
 Parser.prototype.expect = function(text) {
     if (this.token.text !== text) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+        throw this.token.location.toString() + ', SyntaxError: Unexpected token ' + this.token.kind + ' \'' + this.token.text + '\'';
+    }
+    this.consume();
+}
+
+Parser.prototype.expectKind = function(kind) {
+    if (this.token.kind !== kind) {
+        throw this.token.location.toString() + ', SyntaxError: Unexpected token ' + this.token.kind + ' \'' + this.token.text + '\'';
     }
     this.consume();
 }
@@ -76,8 +76,15 @@ Parser.prototype.lookahead = function(k) {
     }
 }
 
+Parser.prototype.updateIndent = function() {
+    if (this.indent_size * this.indent < this.token.text) {
+        this.indent++;
+    } else if (this.indent_size * this.indent > this.token.text) {
+        this.indent--;
+    }
+}
+
 Parser.prototype.parse = function() {
-    
     // set indent size
     for (var i = 0; i < this.tokens.length; i++) {
         if (this.tokens[i].kind === Token.INDENT) {
@@ -87,7 +94,6 @@ Parser.prototype.parse = function() {
             }
         }
     }
-    
     return this.parseProgram();
 }
 
@@ -107,22 +113,23 @@ Parser.prototype.parseProgram = function() {
 */
 Parser.prototype.parseSourceElements = function() {
     
+    // check indent
     this.expect(0);
     
     while (1) {
         
-        if (this.token.kind === Token.EOF) {
+        // the first token would be Token.Indent. 
+        if (this.lookahead(1).kind === Token.EOF) {
             this.consume();
             break;
         }
         
-        var e = this.parseSourceElement();
-        if (e) {
+        var node = this.parseSourceElement();
+        if (node) {
             this.indent = 0;
-            this.nodes.push(e);
+            this.nodes.push(node);
         }
     }
-    
     return this.nodes;
 }
 
@@ -164,41 +171,21 @@ Parser.prototype.parseFunctionDeclaration = function() {
         ContinueStatement
         BreakStatement
         ReturnStatement
-        ThrowStatement
+        ThrowStatement -> RaiseStatement
         TryStatement
 */
 Parser.prototype.parseStatement = function() {
     
-    // syntax check around indent
+    // syntax check around the indent
     if (this.token.kind === Token.INDENT) {
-        if (this.indent_size * this.indent < this.token.text) {
-            this.indent++;
-        } else if (this.indent_size * this.indent > this.token.text) {
-            this.indent--;
-        }
+        this.updateIndent();
         this.consume();
         return this.parseStatement();
     }
     
     if (this.token.kind === Token.NEWLINE) {
-        var expr = {
-            type: Syntax.NEWLINE,
-            value: this.token.text
-        };
-        this.consume();
-        // also plays a role of EmptyStatement by not ignoring newline.
-        return expr;
-        // ignore newline
-        //return this.parseStatement();
-    }
-    
-    // syntax check around ident
-    if (this.token.kind === Token.IDENTIFIER) {
-        // ident statement only
-        if (this.lookahead(1).kind == Token.EOF 
-         || this.lookahead(1).kind == Token.NEWLINE) {
-            throw this.token.location.toString() + ', Syntax error';
-        }
+        // not implement
+        return this.parseEmptyStatement();
     }
     
     if (this.token.kind === Token.KEYWORDS.IF) {
@@ -230,36 +217,38 @@ Parser.prototype.parseStatement = function() {
         return this.parseTryStatement();
     }
     
-    
-    if (this.match(':')) {
+    if (this.match(':')) {console.log(this.token)
         this.consume();
-        // expect newline
-        this.consume();
+        this.expectKind(Token.NEWLINE);
         return this.parseBlock();
     }
     
-    
-    
-    
-    switch (this.token.kind) {
-        // case Token.IDENTIFIER:
-        // case Token.BOOLEAN:
-        // case Token.PUNCTUATOR:
-        //     return this.parseVariableStatement();
-        case Token.SINGLE_LINE_COMMENT:
-            return this.parseComment();
-        default:
-            //console.log(this.token)
-            //throw 'Unknown token ' + this.token;
+    // is this correct to write here?
+    if (this.token.kind === Token.SINGLE_LINE_COMMENT) {
+        return this.parseComment();
     }
     
-    var expr = this.parseExpression();
-    if (expr) {
-        return expr;
-    }
+    // not implement
+    // VariableStatement
+    // ExpressionStatement
     
-    
+    return this.parseExpression();
 }
+
+Parser.prototype.parseEmptyStatement = function() {
+    // plays a role of EmptyStatement.
+    var token = this.token.text;
+    this.consume();
+    return {
+        type: Syntax.NEWLINE,
+        value: token.text
+    };
+    
+    // if you want to ignore newline token, switch upper code to below.
+    //return this.parseStatement();
+}
+
+
 
 /*
     Block:
@@ -291,14 +280,8 @@ Parser.prototype.parseStatementList = function() {
         }
         
         if (this.token.kind === Token.INDENT) {
-            if (this.indent_size * this.indent < this.token.text) {
-                this.indent++;
-            } else if (this.indent_size * this.indent > this.token.text) {
-                this.indent--;
-            }
-            if (this.token.text < indent) {
-                break;
-            }
+            this.updateIndent();
+            if (this.token.text < indent) break;
             this.consume();
         }
         
@@ -328,26 +311,18 @@ Parser.prototype.parseIfStatement = function() {
     }
     
     var exprs = this.parseStatement();
-    if (!exprs[0]) {
+    if (exprs.length == 0) {
         throw this.token.location.toString() + ', SyntaxError: No statement';
     }
     
-    if (this.token.kind !== Token.EOF) {
-        // expect indent token
-        this.expect(indent);
-        if (this.match('else')) {
-            this.consume();
-            // else statement
-            if (this.match(':')) {
-                return {
-                    type: Syntax.IfStatement,
-                    statements: this.parseStatement()
-                };
-            }
-            if (this.match('if')) {
-                alternate = this.parseStatement();
-            }
-        }
+    // expect indent token
+    this.expect(indent);
+    
+    if (this.match('else')) {
+        this.consume();
+        // else if
+        // else
+        alternate = this.parseStatement();
     }
     
     return {
@@ -669,6 +644,10 @@ Parser.prototype.parsePrimaryExpression = function() {
     }
     
     if (this.token.kind === Token.IDENTIFIER) {
+        if (this.lookahead(1).kind == Token.EOF 
+         || this.lookahead(1).kind == Token.NEWLINE) {
+            throw this.token.location.toString() + ', Syntax error';
+        }
         var token = this.token;
         this.consume();
         return {
@@ -706,8 +685,8 @@ Parser.prototype.parsePrimaryExpression = function() {
         }
     }
     
-    console.log(this.token, 'at PrimaryExpression');
-    throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    // console.log(this.token, 'at PrimaryExpression');
+    // throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
 }
 
 /*
@@ -935,8 +914,8 @@ Parser.prototype.parseMemberExpression = function() {
         };
     }
     
-    console.log(this.token, 'at MemberExpression');
-    throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    // console.log(this.token, 'at MemberExpression');
+    // throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
 }
 
 /*
@@ -961,8 +940,8 @@ Parser.prototype.parseNewExpression = function() {
         return expr;
     }
     
-    console.log(this.token, 'at NewExpression');
-    throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    // console.log(this.token, 'at NewExpression');
+    // throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
 }
 
 /*
@@ -975,7 +954,7 @@ Parser.prototype.parseNewExpression = function() {
 Parser.prototype.parseCallExpression = function() {
     
     console.log(this.token, 'at CallExpression')
-    throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    // throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
     
     return {
         type: Syntax.CallExpression,
