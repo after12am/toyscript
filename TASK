@@ -10,8 +10,10 @@
 
 * implement build in function by reference to 8.6 Object type
 * implement build in function by reference to underscore.js and python
+* implement 9 Type Conversion
 
 
-[caution]
+[after parsing]
 
 * not have to implement 7.9.2 Examples of Automatic Semicolon Insertion
+* have to read carefully 10 Execution Contexts
