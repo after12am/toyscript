@@ -38,7 +38,7 @@ Lexer.prototype.isDigit = function(c) {
 }
 
 Lexer.prototype.isLetter = function(c) {
-    return c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
+    return c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_" || c === "$";
 }
 
 Lexer.prototype.isLineTerminator = function(c) {
