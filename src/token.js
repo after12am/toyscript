@@ -9,7 +9,7 @@ Token.prototype.toString = function() {
 }
 
 /*
-    Token of internal definition
+    Tokens
 */
 Token.EOF = 'EOF';
 Token.NEWLINE = 'NEWLINE';

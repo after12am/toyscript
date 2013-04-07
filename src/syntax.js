@@ -1,11 +1,14 @@
 var Syntax = [];
+Syntax.FunctionDeclaration = 'FunctionDeclaration';
+
+
+
 Syntax.NoneLiteral = 'NoneLiteral';
 Syntax.BooleanLiteral = 'BooleanLiteral';
 Syntax.NumericLiteral = 'NumericLiteral';
 Syntax.ArrayLiteral = 'ArrayLiteral';
 Syntax.ObjectLiteral = 'ObjectLiteral';
 Syntax.Property = 'Property';
-Syntax.Grouping = 'Grouping';
 Syntax.StringLiteral = 'StringLiteral';
 Syntax.This = 'This';
 Syntax.MemberExpression = 'MemberExpression';
