@@ -12,7 +12,7 @@ var Tokenizer = function(source) {
 Tokenizer.prototype = new Lexer();
 Tokenizer.prototype.consume = function() {
     if (this.c == '\n' || this.c == '\r') {
-        this.column = 0;
+        this.column = 1;
     } else {
         this.column++;
     }
@@ -120,7 +120,7 @@ Tokenizer.prototype.tokenize = function() {
         this.consume();
     }
     
-    tokens.push(new Token(Token.EOF, '', new Location(this.line, ++this.column)));
+    tokens.push(new Token(Token.EOF, '', new Location(this.line, this.column)));
     
     return tokens;
 }
@@ -284,13 +284,14 @@ Tokenizer.prototype.scanKeyword = function() {
     }
     
     if (Token.KEYWORDS[keyword.toUpperCase()]) {
-        var kind = Token.KEYWORDS[keyword.toUpperCase()];
+        var text = Token.KEYWORDS[keyword.toUpperCase()];
         var i = 0;
-        while (i < kind.length) {
+        console.log(this.column)
+        while (i < text.length) {
             this.consume();
             i++;
         }
-        return new Token(kind, keyword, new Location(this.line, this.column));
+        return new Token(text, keyword, new Location(this.line, this.column));
     }
 }
 
