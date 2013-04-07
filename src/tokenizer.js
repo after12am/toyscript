@@ -3,6 +3,8 @@ var Tokenizer = function(source) {
     this.source = source || '';
     this.p = 0;
     this.column = 1;
+    this.indent = 0;
+    this.indent_size = 4;
     this.c = this.source[this.p];
     Lexer.call(this);
 }
@@ -125,14 +127,15 @@ Tokenizer.prototype.tokenize = function() {
 
 Tokenizer.prototype.scanIndent = function() {
     
-    var size = 0;
+    this.indent = 0;
     
     while (this.p < this.source.length) {
-        if (this.c == ' ' || this.c == '\t') size++;
+        if (this.c == ' ') this.indent++;
+        else if (this.c == '\t') this.indent += this.indent_size;
         else break;
         this.consume();
     }
-    return new Token(Token.INDENT, size, new Location(this.line, this.column));
+    return new Token(Token.INDENT, this.indent, new Location(this.line, this.column));
 }
 
 Tokenizer.prototype.scanLineTerminator = function() {
@@ -146,7 +149,8 @@ Tokenizer.prototype.scanLineTerminator = function() {
         this.consume();
     }
     
-    return new Token(Token.NEWLINE, c, new Location(this.line, this.column));
+    // If column is zero, set indent size as column.
+    return new Token(Token.NEWLINE, c, new Location(this.line, this.column || (this.indent + 1)));
 }
 
 /*

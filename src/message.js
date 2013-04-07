@@ -13,6 +13,10 @@ Message.prototype.toString = function() {
 };
 
 Message.UnknownToken = 'Unknown token';
+Message.UnexpectedToken = 'Unexpected token';
 Message.IllegalIdent = 'Illegal identifier';
 Message.UnexpectedString = 'Unexpected string';
 Message.IllegalComment = 'Illegal comment';
+Message.IllegalBlock = 'Block statements must have one statement at least';
+Message.IndentSize = 'Indent size may be incorrect';
+Message.IllegalIdentifier = 'Illegal identifier';

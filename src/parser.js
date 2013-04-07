@@ -53,6 +53,14 @@ Parser.prototype.lookahead = function(k) {
     }
 }
 
+Parser.prototype.lookback = function(k) {
+    if (this.p - k >= 0) {
+        return this.tokens[this.p - k];
+    } else {
+        return this.tokens[0];
+    }
+}
+
 Parser.prototype.updateIndent = function() {
     if (this.indent_size * this.indent < this.token.text) {
         this.indent++;
@@ -139,9 +147,10 @@ Parser.prototype.parseSourceElement = function() {
 }
 
 /*
-    Statement:
+    12 Statements
+    
+    Statement :
         Block
-        VariableStatement
         EmptyStatement
         ExpressionStatement
         IfStatement
@@ -154,22 +163,17 @@ Parser.prototype.parseSourceElement = function() {
 */
 Parser.prototype.parseStatement = function() {
     
-    // syntax check around the indent
     if (this.token.kind === Token.INDENT) {
         this.updateIndent();
         this.consume();
         return this.parseStatement();
     }
     
-    if (this.match(':')) {
-        this.consume();
-        this.expectKind(Token.NEWLINE);
-        return this.parseBlock();
+    if (this.matchKind(Token.PUNCTUATOR)) {
+        if (this.match(':')) {
+            return this.parseBlock();
+        }
     }
-    
-    // not implement
-    // VariableStatement
-    // ExpressionStatement
     
     switch (this.token.kind) {
         case Token.NEWLINE:
@@ -191,42 +195,38 @@ Parser.prototype.parseStatement = function() {
             return this.parseTryStatement();
         case Token.SINGLE_LINE_COMMENT: 
         case Token.MULTI_LINE_COMMENT:
-            return this.parseComment(); // is this correct to write here?
+            return this.parseComment();
         default:
             return this.parseExpressionStatement();
     }
 }
 
-Parser.prototype.parseExpressionStatement = function() {
-    return this.parseExpression();
-}
-
-Parser.prototype.parseEmptyStatement = function() {
-    
-    // not implement
-    
-    // plays a role of EmptyStatement.
-    var token = this.token;
-    this.consume();
-    
-    return {
-        type: Syntax.NEWLINE,
-        value: token.text
-    };
-    
-    // if you want to ignore newline token, switch upper code to below.
-    //return this.parseStatement();
-}
-
 /*
+    12.1 Block
+    
     Block:
-        { StatementList }
+        : LineTerminator StatementList
 */
 Parser.prototype.parseBlock = function() {
-    return this.parseStatementList();
+    this.expect(':');
+    this.expectKind(Token.NEWLINE);
+    var exprs = this.parseStatementList();
+    var pass = false;
+    for (var i in exprs) {
+        if (exprs[i].type !== Token.NEWLINE) {
+            pass = true;
+            break;
+        }
+    }
+    if (!pass) {
+        throw new Message(this.lookback(1), Message.IllegalBlock).toString();
+    }
+    return exprs;
 }
 
 /*
+    12.1 Block
+    
     StatementList:
         Statement
         StatementList Statement
@@ -248,8 +248,13 @@ Parser.prototype.parseStatementList = function() {
         }
         
         if (this.token.kind === Token.INDENT) {
-            this.updateIndent();
-            if (this.token.text < indent) break;
+            //this.updateIndent();
+            if (this.token.text < indent) {
+                this.updateIndent();
+                break;
+            } else if (this.token.text > indent) {
+                throw new Message(this.token, Message.IndentSize).toString();
+            }
             this.consume();
         }
         
@@ -257,13 +262,47 @@ Parser.prototype.parseStatementList = function() {
             exprs.push(expr);
         }
     }
+    
     return exprs;
 }
 
 /*
-    IfStatement:
-        if ( Expression ) Statement else Statement
-        if ( Expression ) Statement
+    12.3 Empty Statement
+    
+    EmptyStatement :
+        LineTerminator
+*/
+Parser.prototype.parseEmptyStatement = function() {
+    var token = this.token;
+    this.expectKind(Token.NEWLINE);
+    
+    // If switching to below, ignores newline.
+    //return this.parseStatement();
+    
+    return {
+        type: Syntax.NEWLINE,
+        value: token.text
+    };
+}
+
+/*
+    12.4 Expression Statement
+    
+    ExpressionStatement :
+        [lookahead ∉ {:, def} ] Expression ;
+*/
+Parser.prototype.parseExpressionStatement = function() {
+    if (this.match('def')) return;
+    if (this.match(':')) return;
+    return this.parseExpression();
+}
+
+/*
+    12.5 The if Statement
+    
+    IfStatement :
+        if Expression: Statement else Statement
+        if Expression: Statement
 */
 Parser.prototype.parseIfStatement = function() {
     
@@ -273,18 +312,11 @@ Parser.prototype.parseIfStatement = function() {
     this.expect('if');
     
     var expr = this.parseExpression();
-    if (!expr) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-    }
-    
     var exprs = this.parseStatement();
-    if (exprs.length == 0) {
-        throw this.token.location.toString() + ', SyntaxError: No statement';
-    }
     
     if (this.matchKind(Token.INDENT)) {
         if (!this.match(indent)) {
-            throw 'Unexpecting indent size';
+            throw new Message(this.token, Message.IndentSize).toString();
         }
         this.consume();
     }
@@ -636,8 +668,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         }
     }
     
-    // console.log(this.token, 'at PrimaryExpression');
-    // throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    throw new Message(this.token, Message.UnexpectedToken).toString();
 }
 
 /*
@@ -647,8 +678,11 @@ Parser.prototype.parseIdentifier = function() {
     
     if (this.lookahead(1).kind == Token.EOF 
      || this.lookahead(1).kind == Token.NEWLINE) {
-        throw this.token.location.toString() + ', Syntax error';
+         if (this.lookback(1).kind !== Token.PUNCTUATOR) {
+             throw new Message(this.token, Message.IllegalIdentifier).toString();
+         }
     }
+    
     var token = this.token;
     this.consume();
     
@@ -1262,6 +1296,7 @@ Parser.prototype.parseEqualityExpression = function() {
 */
 Parser.prototype.parseBitwiseANDExpression = function() {
     
+    var token = this.token;
     var expr = this.parseEqualityExpression();
     
     if (this.match('&')) {
@@ -1509,7 +1544,5 @@ Parser.prototype.parseFormalParameterList = function() {
 */
 Parser.prototype.parseFunctionBody = function() {
     var indent = this.indent;
-    this.expect(':');
-    this.expectKind(Token.NEWLINE);
     return this.parseBlock();
 }
