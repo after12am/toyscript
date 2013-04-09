@@ -32,9 +32,13 @@ Parser.prototype.matchKind = function(kind) {
     return (this.token.kind === kind);
 }
 
-Parser.prototype.expect = function(text) {
-    if (this.token.text !== text) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token ' + this.token.kind + ' \'' + this.token.text + '\'' + ' expecting ' + text;
+Parser.prototype.expect = function(value, message) {
+    if (this.token.text !== value) {
+        if (message) {
+            throw message;
+        } else {
+            throw this.token.location.toString() + ', SyntaxError: Unexpected token ' + this.token.kind + ' \'' + this.token.text + '\'' + ' expecting ' + value;
+        }
     }
     this.consume();
 }
@@ -347,67 +351,44 @@ Parser.prototype.parseIfStatement = function() {
     12.6 Iteration Statements
     
     IterationStatement :
-        while ( Expression ) Statement
-        for (ExpressionNoInopt; Expressionopt ; Expressionopt ) Statement
-        for ( var VariableDeclarationListNoIn; Expressionopt ; Expressionopt ) Statement
-        for ( LeftHandSideExpression in Expression ) Statement
-        for ( var VariableDeclarationNoIn in Expression ) Statement
+        while Expression: Statement
+        for LeftHandSideExpression in Expression: Statement
 */
 Parser.prototype.parseIterationStatement = function() {
     
     if (this.match('while')) {
-        
-        // consume while keyword
         this.consume();
         
-        var expr = this.parseExpression();
-        if (!expr) {
-            throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-        }
-        
-        var exprs = this.parseStatement();
-        if (!exprs[0]) {
-            throw this.token.location.toString() + ', SyntaxError: No statement';
+        try {
+            var expr = this.parseExpression();
+        } catch (e) {
+            throw new Message(this.token, Message.IndentWhile).toString();
         }
         
         return {
             type: Syntax.WhileStatement,
             condition: expr,
-            statements: exprs
+            body: this.parseStatement()
         };
     }
     
     if (this.match('for')) {
-        
-        // consume for keyword
         this.consume();
         
-        // if (this.lookahead(1).text !== 'in') {
-        //     throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-        // }
-        
-        var left = this.parseExpression();
-        if (!left) {
-            throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-        }
-        
+        var left = this.parseLeftHandSideExpression();
         this.expect('in');
         
-        var expr = this.parseExpression();
-        if (!expr) {
-            throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-        }
-        
-        var exprs = this.parseStatement();
-        if (!exprs[0]) {
-            throw this.token.location.toString() + ', SyntaxError: No statement';
+        try {
+            var right = this.parseExpression();
+        } catch (e) {
+            throw new Message(this.token, Message.IndentFor).toString();
         }
         
         return {
-            type: Syntax.ForInStatement,
+            type: Syntax.ForStatement,
             left: left,
             right: expr,
-            statements: exprs
+            body: this.parseStatement()
         };
     }
 }
@@ -473,108 +454,97 @@ Parser.prototype.parseReturnStatement = function() {
 }
 
 /*
-    RaiseStatement:
-        raise Expression
+    12.13 The throw statement
+    
+    RaiseStatement :
+        raise [LineTerminator 無し] Expression
 */
 Parser.prototype.parseRaiseStatement = function() {
+    
+    var expr;
     this.consume();
-    var expr = this.parseExpression();
-    if (!expr) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    
+    if (this.token.kind === Token.NEWLINE || this.token.kind === Token.EOF) {
+        throw new Message(this.token, Message.IllegalRaise).toString();
     }
+    
+    if (!(argument = this.parseExpression())) {
+        throw new Message(this.token, Message.IllegalRaise).toString();
+    }
+    
     return {
         type: Syntax.RaiseStatement,
-        expr: expr
+        argument: argument
     };
 }
 
 /*
-    TryStatement:
-        try Block except
-        try Block finally
-        try Block except finally
+    12.14 The try statement
+    
+    TryStatement :
+        try Block Catch
+        try Block Finally
+        try Block Catch Finally
 */
 Parser.prototype.parseTryStatement = function() {
-    
-    this.consume();
-    
-    var except;
     var indent = this.indent * this.indent_size;
+    var handlers = [];
+    var finalizer = null;
     
-    var exprs = this.parseStatement();
-    if (!exprs[0]) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    this.expect('try');
+    var block = this.parseBlock();
+    this.expect(indent);
+    
+    while (this.match('except')) {
+        handlers.push(this.parseExceptStatement());
+        this.expect(indent);
     }
     
-    if (this.indent_size * this.indent !== this.token.text) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-    }
-    this.consume();
-    
-    if (this.match('except')) {
-        except = this.parseExceptStatement();
-    }
-    
-    if (!except) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-    }
-    
-    if (this.lookahead(1).text === 'finally') {
-        
-        if (this.indent_size * this.indent !== this.token.text) {
-            throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-        }
-        
-        this.consume();
-        
-        if (this.match('finally')) {
-            
-            var fin = this.parseFinallyStatement();
-            if (!fin) {
-                throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-            }
-            
-            return {
-                type: Syntax.TryStatement,
-                try: exprs,
-                except: except,
-                fin: fin
-            };
-        }
+    if (this.match('finally')) {
+        finalizer = this.parseFinallyStatement();
     }
     
     return {
         type: Syntax.TryStatement,
-        try: exprs,
-        except: except
+        block: block,
+        handlers: handlers,
+        finalizer: finalizer
     };
 }
 
 /*
-    Except:
-        except (Identifier) Block
+    12.14 The try statement
+    
+    Except :
+        except Identifieropt: Block
 */
 Parser.prototype.parseExceptStatement = function() {
-    this.consume();
-    if (this.token.kind !== Token.IDENTIFIER) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    this.expect('except');
+    var param = null;
+    if (!this.match(':')) {
+        param = this.parseIdentifier();
     }
     return {
         type: Syntax.ExceptStatement,
-        expr: this.parseIdentifier(),
-        statements: this.parseStatement()
+        param: param,
+        body: this.parseBlock()
     };
 }
 
 /*
+    12.14 The try statement
+    
     Finally:
         finally Block
 */
 Parser.prototype.parseFinallyStatement = function() {
     this.consume();
+    if (!this.match(':')) {
+        throw new Message(this.token, Message.IllegalFinally).toString();
+    }
     return {
         type: Syntax.FinallyStatement,
-        statements: this.parseStatement()
+        body: this.parseBlock()
     };
 }
 
@@ -713,9 +683,9 @@ Parser.prototype.parseIdentifier = function() {
     
     if (this.lookahead(1).kind == Token.EOF 
      || this.lookahead(1).kind == Token.NEWLINE) {
-         if (this.lookback(1).kind !== Token.PUNCTUATOR) {
-             throw new Message(this.token, Message.IllegalIdentifier).toString();
-         }
+        if (this.lookback(1).kind !== Token.PUNCTUATOR) {
+            throw new Message(this.token, Message.IllegalIdentifier).toString();
+        }
     }
     
     var token = this.token;
