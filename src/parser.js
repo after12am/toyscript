@@ -4,7 +4,7 @@ var Parser = function(tokens, log) {
     this.p = 0;
     this.tokens = tokens;
     this.token = this.tokens[this.p];
-    this.indent_size;
+    this.indent_size = 4;
     this.indent = 0;
     this.inDef = false;
     this.log = log || new Log();
@@ -62,13 +62,14 @@ Parser.prototype.lookback = function(k) {
     }
 }
 
+/*
 Parser.prototype.updateIndent = function() {
     if (this.indent_size * this.indent < this.token.text) {
         this.indent++;
     } else if (this.indent_size * this.indent > this.token.text) {
         this.indent--;
     }
-}
+}*/
 
 Parser.prototype.parse = function() {
     // store indent size
@@ -164,8 +165,12 @@ Parser.prototype.parseSourceElement = function() {
 */
 Parser.prototype.parseStatement = function() {
     
+    // if (this.token.kind === Token.INDENT) {
+    //     this.updateIndent();
+    //     this.consume();
+    //     return this.parseStatement();
+    // }
     if (this.token.kind === Token.INDENT) {
-        this.updateIndent();
         this.consume();
         return this.parseStatement();
     }
@@ -208,16 +213,27 @@ Parser.prototype.parseStatement = function() {
         : LineTerminator StatementList
 */
 Parser.prototype.parseBlock = function() {
+    
     this.expect(':');
-    this.expectKind(Token.NEWLINE);
+    
+    // for allowing below one liner code
+    // example) if a: a = 1
+    if (this.matchKind(Token.NEWLINE)) {
+        this.consume();
+    }
+    
+    this.indent++;
     var exprs = this.parseStatementList();
+    this.indent--;
+    
     var pass = false;
     for (var i in exprs) {
-        if (exprs[i].type !== Token.NEWLINE) {
+        if (exprs[i].type !== Syntax.NEWLINE) {
             pass = true;
             break;
         }
     }
+    
     if (!pass) {
         throw new Message(this.lookback(1), Message.IllegalBlock).toString();
     }
@@ -233,36 +249,28 @@ Parser.prototype.parseBlock = function() {
 */
 Parser.prototype.parseStatementList = function() {
     
-    var exprs = [this.parseStatement()];
+    var exprs = [];
     var indent = this.indent * this.indent_size;
     
     while (1) {
         
-        // ignore newline token
-        if (this.token.kind === Token.NEWLINE) {
+        if (this.token.kind === Token.EOF) break;
+        if (this.token.kind === Token.NEWLINE) { // ignore newline token
             this.consume();
-        }
-        
-        if (this.token.kind === Token.EOF) {
-            break;
+            continue;
         }
         
         if (this.token.kind === Token.INDENT) {
-            //this.updateIndent();
-            if (this.token.text < indent) {
-                this.updateIndent();
-                break;
-            } else if (this.token.text > indent) {
+            if (this.token.text < indent) break;
+            if (this.token.text > indent) {
                 throw new Message(this.token, Message.IndentSize).toString();
             }
             this.consume();
+            continue;
         }
         
-        if (expr = this.parseStatement()) {
-            exprs.push(expr);
-        }
+        exprs.push(this.parseStatement());
     }
-    
     return exprs;
 }
 
