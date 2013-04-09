@@ -6,6 +6,7 @@ var Parser = function(tokens, log) {
     this.token = this.tokens[this.p];
     this.indent_size;
     this.indent = 0;
+    this.inDef = false;
     this.log = log || new Log();
 }
 
@@ -193,8 +194,7 @@ Parser.prototype.parseStatement = function() {
             return this.parseRaiseStatement();
         case Token.KEYWORDS.TRY:
             return this.parseTryStatement();
-        case Token.SINGLE_LINE_COMMENT: 
-        case Token.MULTI_LINE_COMMENT:
+        case Token.COMMENT: 
             return this.parseComment();
         default:
             return this.parseExpressionStatement();
@@ -336,9 +336,14 @@ Parser.prototype.parseIfStatement = function() {
 }
 
 /*
-    IterationStatement:
+    12.6 Iteration Statements
+    
+    IterationStatement :
         while ( Expression ) Statement
+        for (ExpressionNoInopt; Expressionopt ; Expressionopt ) Statement
+        for ( var VariableDeclarationListNoIn; Expressionopt ; Expressionopt ) Statement
         for ( LeftHandSideExpression in Expression ) Statement
+        for ( var VariableDeclarationNoIn in Expression ) Statement
 */
 Parser.prototype.parseIterationStatement = function() {
     
@@ -400,40 +405,62 @@ Parser.prototype.parseIterationStatement = function() {
 }
 
 /*
-    ContinueStatement:
+    12.7 The continue Statement
+    
+    ContinueStatement :
         continue
 */
 Parser.prototype.parseContinueStatement = function() {
     this.consume();
+    if (!(this.token.kind === Token.NEWLINE || this.token.kind === Token.EOF)) {
+        throw new Message(this.token, Message.IllegalContinue).toString();
+    }
     return {
         type: Syntax.ContinueStatement
     };
 }
 
 /*
-    BreakStatement:
+    12.8 The break Statement
+    
+    BreakStatement :
         break
 */
 Parser.prototype.parseBreakStatement = function() {
     this.consume();
+    if (!(this.token.kind === Token.NEWLINE || this.token.kind === Token.EOF)) {
+        throw new Message(this.token, Message.IllegalBreak).toString();
+    }
     return {
         type: Syntax.BreakStatement
     };
 }
 
 /*
-    ReturnStatement:
-        return Expression
+    12.9 The return Statement
+    
+    ReturnStatement :
+    return [LineTerminator 無し] Expressionopt ;
 */
 Parser.prototype.parseReturnStatement = function() {
+    
     this.consume();
-    var expr = this.parseExpression();
-    if (!expr) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    if (!this.inDef) {
+        throw new Message(this.token, Message.IllegalReturn).toString();
     }
+    
+    var argument = null;
+    if (!(this.token.kind === Token.NEWLINE || this.token.kind === Token.EOF)) {
+        argument = this.parseExpression();
+    }
+    
+    if (!(this.token.kind === Token.NEWLINE || this.token.kind === Token.EOF)) {
+        throw new Message(this.token, Message.IllegalReturnArgument).toString();
+    }
+    
     return {
         type: Syntax.ReturnStatement,
-        expr: expr
+        argument: argument
     };
 }
 
@@ -1457,25 +1484,29 @@ Parser.prototype.parseAssignmentExpression = function() {
     return expr;
 }
 
+/*
+    7.4 Comments
+*/
 Parser.prototype.parseComment = function() {
     
-    // single line comment
-    if (this.token.kind === Token.SINGLE_LINE_COMMENT) {
+    // multi line comment
+    if (this.token.multiple) {
         var token = this.token;
         this.consume();
         return {
-            type: Syntax.SingleLineComment,
-            value: token.text
+            type: Syntax.Comment,
+            value: token.text,
+            multiple: true
         }
     }
-    
-    // multi line comment
-    if (this.token.kind === Token.MULTI_LINE_COMMENT) {
+    // single line comment
+    else {
         var token = this.token;
         this.consume();
         return {
-            type: Syntax.MultiLineComment,
-            value: token.text
+            type: Syntax.Comment,
+            value: token.text,
+            multiple: false
         }
     }
 }
@@ -1493,7 +1524,9 @@ Parser.prototype.parseFunctionDeclaration = function() {
     this.expect('def');
     var id = this.parseIdentifier();
     var params = this.parseFormalParameterList();
+    this.inDef = true;
     var body = this.parseFunctionBody();
+    this.inDef = false;
     return {
         type: Syntax.FunctionDeclaration,
         id: id,

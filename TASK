@@ -5,12 +5,13 @@
 * check whether completely implemented 7.8.4 String Literals
 * have to implement 7.8.5 Regular Expression Literals
 * through pass keyword
+* bug of calculating column postion
 
 
 [parser.js]
 * have to confirm to need to implement 13.2 Creating Function Objects
 * give message argument to expect function
-
+* stil not implement 12.6 Iteration Statements
 
 [build-in]
 

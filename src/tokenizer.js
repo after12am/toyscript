@@ -168,7 +168,9 @@ Tokenizer.prototype.scanComment = function() {
             comment += this.c;
             this.consume();
         }
-        return new Token(Token.SINGLE_LINE_COMMENT, comment, new Location(this.line, this.column));
+        var token = new Token(Token.COMMENT, comment, new Location(this.line, this.column));
+        token.multiple = false;
+        return token
     }
     
     var sign = this.c + this.lookahead(1);
@@ -186,7 +188,9 @@ Tokenizer.prototype.scanComment = function() {
         }
         this.consume();
         this.consume();
-        return new Token(Token.MULTI_LINE_COMMENT, comment, new Location(this.line, this.column));
+        var token = new Token(Token.COMMENT, comment, new Location(this.line, this.column));
+        token.multiple = true;
+        return token
     }
 }
 
@@ -286,7 +290,6 @@ Tokenizer.prototype.scanKeyword = function() {
     if (Token.KEYWORDS[keyword.toUpperCase()]) {
         var text = Token.KEYWORDS[keyword.toUpperCase()];
         var i = 0;
-        console.log(this.column)
         while (i < text.length) {
             this.consume();
             i++;
