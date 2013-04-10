@@ -12,6 +12,12 @@
 * have to confirm to need to implement 13.2 Creating Function Objects
 * give message argument to expect function
 * stil not implement 12.6 Iteration Statements
+* parseVariableStatement may not call from anywhere
+* have to read carefully 11.1.2 Identifier Reference
+* have to read carefully 7.8.3 Numeric Literals
+* have to read carefully 7.8.4 String Literals
+* have to implement 7.8.5 Regular Expression Literals
+* have to read 7.9 Automatic Semicolon Insertion, but I think this is under tested.
 
 [build-in]
 
@@ -24,3 +30,4 @@
 
 * not have to implement 7.9.2 Examples of Automatic Semicolon Insertion
 * have to read carefully 10 Execution Contexts
+* have to implement undefined infinity...

@@ -6,7 +6,8 @@ var Parser = function(tokens, log) {
     this.token = this.tokens[this.p];
     this.indent_size = 4;
     this.indent = 0;
-    this.inDef = false;
+    this.inFunction = false;
+    this.inIteration = false;
     this.log = log || new Log();
 }
 
@@ -34,18 +35,16 @@ Parser.prototype.matchKind = function(kind) {
 
 Parser.prototype.expect = function(value, message) {
     if (this.token.text !== value) {
-        if (message) {
-            throw message;
-        } else {
-            throw this.token.location.toString() + ', SyntaxError: Unexpected token ' + this.token.kind + ' \'' + this.token.text + '\'' + ' expecting ' + value;
-        }
+        if (message) throw message;
+        else throw this.token.location.toString() + ' Unexpected token ' + '\'' + this.token.text + '\'' + ' expecting \'' + value + '\'';
     }
     this.consume();
 }
 
-Parser.prototype.expectKind = function(kind) {
+Parser.prototype.expectKind = function(kind, message) {
     if (this.token.kind !== kind) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token ' + this.token.kind + ' \'' + this.token.text + '\'';
+        if (message) throw message;
+        else throw this.token.location.toString() + ' Unexpected token ' + this.token.kind + ' expecting ' + kind;
     }
     this.consume();
 }
@@ -358,24 +357,32 @@ Parser.prototype.parseIterationStatement = function() {
     
     if (this.match('while')) {
         this.consume();
-        
         try {
             var expr = this.parseExpression();
         } catch (e) {
             throw new Message(this.token, Message.IndentWhile).toString();
         }
-        
+        this.inIteration = true;
+        var body = this.parseStatement();
+        this.inIteration = false;
         return {
             type: Syntax.WhileStatement,
             condition: expr,
-            body: this.parseStatement()
+            body: body
         };
     }
     
     if (this.match('for')) {
         this.consume();
         
-        var left = this.parseLeftHandSideExpression();
+        var arguments = [];
+        
+        while (1) {
+            if (this.match('in')) break;
+            if (this.match(',')) this.consume();
+            arguments.push(this.parseLeftHandSideExpression());
+        }
+        
         this.expect('in');
         
         try {
@@ -383,12 +390,14 @@ Parser.prototype.parseIterationStatement = function() {
         } catch (e) {
             throw new Message(this.token, Message.IndentFor).toString();
         }
-        
+        this.inIteration = true;
+        var body = this.parseStatement();
+        this.inIteration = false;
         return {
-            type: Syntax.ForStatement,
-            left: left,
-            right: expr,
-            body: this.parseStatement()
+            type: Syntax.ForInStatement,
+            arguments: arguments,
+            right: right,
+            body: body
         };
     }
 }
@@ -403,6 +412,9 @@ Parser.prototype.parseContinueStatement = function() {
     this.consume();
     if (!(this.token.kind === Token.NEWLINE || this.token.kind === Token.EOF)) {
         throw new Message(this.token, Message.IllegalContinue).toString();
+    }
+    if (!this.inIteration) {
+        throw new Message(this.token, Message.IllegalContinuePosition).toString();
     }
     return {
         type: Syntax.ContinueStatement
@@ -420,6 +432,9 @@ Parser.prototype.parseBreakStatement = function() {
     if (!(this.token.kind === Token.NEWLINE || this.token.kind === Token.EOF)) {
         throw new Message(this.token, Message.IllegalBreak).toString();
     }
+    if (!this.inIteration) {
+        throw new Message(this.token, Message.IllegalBreakPosition).toString();
+    }
     return {
         type: Syntax.BreakStatement
     };
@@ -434,7 +449,7 @@ Parser.prototype.parseBreakStatement = function() {
 Parser.prototype.parseReturnStatement = function() {
     
     this.consume();
-    if (!this.inDef) {
+    if (!this.inFunction) {
         throw new Message(this.token, Message.IllegalReturn).toString();
     }
     
@@ -553,12 +568,7 @@ Parser.prototype.parseFinallyStatement = function() {
         var VariableDeclarationList ;
 */
 Parser.prototype.parseVariableStatement = function() {
-    
-    var expr = this.parseVariableDeclarationList();
-    
-    // not implemented
-    
-    return expr;
+    return this.parseVariableDeclarationList();
 }
 
 /*
@@ -567,12 +577,7 @@ Parser.prototype.parseVariableStatement = function() {
         VariableDeclarationList , VariableDeclaration
 */
 Parser.prototype.parseVariableDeclarationList = function() {
-    
-    var expr = this.parseVariableDeclaration();
-    
-    // not implemented
-    
-    return expr;
+    return this.parseVariableDeclaration();
 }
 
 /*
@@ -580,57 +585,17 @@ Parser.prototype.parseVariableDeclarationList = function() {
         Identifier Initialiser
 */
 Parser.prototype.parseVariableDeclaration = function() {
-    
-    var expr = this.parseInitialiser();
-    
-    // not implemented
-    
-    return expr;
+    return this.parseInitialiser();
 }
 
 Parser.prototype.parseInitialiser = function() {
-    
-    var expr = this.parseAssignmentExpression();
-    
-    // not implemented
-    
-    return expr;
+    return this.parseAssignmentExpression();
 }
 
 /*
-    Expressions
-    	AssignmentExpression
-        Expression , AssignmentExpression
-*/
-Parser.prototype.parseExpression = function() {
+    11.1 Primary Expressions
     
-    var expr = this.parseAssignmentExpression();
-    
-    if (this.match(',')) {
-        expr = {
-            type: Syntax.SequenceExpression,
-            expressions: [expr]
-        };
-
-        while (1) {
-            if (!this.match(',')) {
-                break;
-            }
-            this.consume();
-            expr.expressions.push(this.parseExpression());
-        }
-    }
-    
-    
-    // this.expect('(');
-    // var expr = this.parseExpression();
-    // this.expect(')');
-    
-    return expr;
-}
-
-/*
-    PrimaryExpression:
+    PrimaryExpression :
         this
         Identifier
         Literal
@@ -641,11 +606,9 @@ Parser.prototype.parseExpression = function() {
 Parser.prototype.parsePrimaryExpression = function() {
     
     if (this.token.kind === Token.KEYWORDS.THIS) {
-        var token = this.token;
         this.consume();
         return {
-            type: Syntax.This,
-            value: token.text 
+            type: Syntax.ThisExpression
         };
     }
     
@@ -661,19 +624,19 @@ Parser.prototype.parsePrimaryExpression = function() {
     if (this.token.kind === Token.PUNCTUATOR) {
         
         if (this.match('[')) {
-            return this.parseArrayLiteral();
+            return this.parseArrayInitialiser();
         }
         
         if (this.match('{')) {
-            return this.parseObjectLiteral();
+            return this.parseObjectInitialiser();
         }
         
         if (this.match('(')) {
-            return this.parseExpression();
+            return this.parseGroupingOperator();
         }
     }
     
-    throw new Message(this.token, Message.UnexpectedToken).toString();
+    throw new Message(this.token, Message.UnexpectedToken, '\'' + this.token.text + '\'').toString();
 }
 
 /*
@@ -681,16 +644,15 @@ Parser.prototype.parsePrimaryExpression = function() {
 */
 Parser.prototype.parseIdentifier = function() {
     
-    if (this.lookahead(1).kind == Token.EOF 
-     || this.lookahead(1).kind == Token.NEWLINE) {
-        if (this.lookback(1).kind !== Token.PUNCTUATOR) {
-            throw new Message(this.token, Message.IllegalIdentifier).toString();
-        }
-    }
+    // if (this.lookahead(1).kind == Token.EOF 
+    //  || this.lookahead(1).kind == Token.NEWLINE) {
+    //     if (this.lookback(1).kind !== Token.PUNCTUATOR) {
+    //         throw new Message(this.token, Message.IllegalIdentifier).toString();
+    //     }
+    // }
     
     var token = this.token;
     this.consume();
-    
     return {
         type: Syntax.Identifier,
         value: token.text 
@@ -698,8 +660,10 @@ Parser.prototype.parseIdentifier = function() {
 }
 
 /*
-    Literal:
-        NoneLiteral
+    7.8 Literals
+    
+    Literal ::
+        NullLiteral
         BooleanLiteral
         NumericLiteral
         StringLiteral
@@ -744,61 +708,81 @@ Parser.prototype.parseLiteral = function() {
 }
 
 /*
-    ArrayLiteral:
-        [ ]
-        [ ElementList ]
-*/
-Parser.prototype.parseArrayLiteral = function() {
+    11.1.4 Array Initialiser
     
+    ArrayLiteral :
+        [ Elisionopt ]
+        [ ElementList ]
+        [ ElementList , Elisionopt ] <- ban
+*/
+Parser.prototype.parseArrayInitialiser = function() {
     this.expect('[');
     var eles = this.parseElementList();
     this.expect(']');
-    
     return {
-        type: Syntax.ArrayLiteral,
+        type: Syntax.ArrayExpression,
         elements: eles
     };
 }
 
 /*
-    ElementList:
+    11.1.4 Array Initialiser
+    
+    ElementList :
+        Elisionopt AssignmentExpression
+        ElementList , Elisionopt AssignmentExpression
+            |
+            V
         AssignmentExpression
-        ElementList AssignmentExpression
+        ElementList, AssignmentExpression
 */
 Parser.prototype.parseElementList = function() {
     
-    var eles = [];
+    var elements = [];
     
     while (!this.match(']')) {
         if (this.match(',')) {
             this.consume();
         }
-        eles.push(this.parseAssignmentExpression());
+        elements.push(this.parseAssignmentExpression());
     }
-    return eles;
+    return elements;
 }
 
 /*
-    ObjectLiteral:
+    11.1.4 Array Initialiser
+    
+    Elision :
+        ,
+        Elision ,
+*/
+Parser.prototype.parseElision = function() {
+    // not implemented
+}
+
+/*
+    11.1.5 Object Initialiser
+    
+    ObjectLiteral :
         { }
         { PropertyNameAndValueList }
 */
-Parser.prototype.parseObjectLiteral = function() {
-    
+Parser.prototype.parseObjectInitialiser = function() {
     this.expect('{');
     var props = this.parsePropertyNameAndValueList()
     this.expect('}');
-    
     return {
-        type: Syntax.ObjectLiteral,
+        type: Syntax.ObjectExpression,
         properties: props
     };
 }
 
 /*
-    PropertyNameAndValueList:
+    11.1.5 Object Initialiser
+    
+    PropertyNameAndValueList :
         PropertyName : AssignmentExpression
-        PropertyNameAndValueList , PropertyName
+        PropertyNameAndValueList , PropertyName : AssignmentExpression
 */
 Parser.prototype.parsePropertyNameAndValueList = function() {
     
@@ -811,18 +795,19 @@ Parser.prototype.parsePropertyNameAndValueList = function() {
         
         var name = this.parsePropertyName();
         this.expect(':');
-        
         props.push({
             type: Syntax.Property,
-            left: name,
-            right: this.parseAssignmentExpression()
+            name: name,
+            value: this.parseAssignmentExpression()
         });
     }
     return props;
 }
 
 /*
-    PropertyName:
+    11.1.5 Object Initialiser
+    
+    PropertyName :
         Identifier
         StringLiteral
         NumericLiteral
@@ -834,7 +819,7 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.Identifier,
-            value: token.text 
+            name: token.text 
         };
     }
     
@@ -843,7 +828,7 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.StringLiteral,
-            value: token.text
+            name: token.text
         };
     }
     
@@ -852,9 +837,24 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.NumericLiteral,
-            value: token.text
+            name: token.text
         };
     }
+}
+
+/*
+    11.1.6 The Grouping Operator
+    
+    ( Expression )
+*/
+Parser.prototype.parseGroupingOperator = function() {
+    this.expect('(');
+    var expr = this.parseExpression();
+    this.expect(')');
+    return {
+        type: Syntax.GroupingExpression,
+        expr: expr
+    };
 }
 
 /*
@@ -1463,6 +1463,38 @@ Parser.prototype.parseAssignmentExpression = function() {
 }
 
 /*
+    Expressions
+    	AssignmentExpression
+        Expression , AssignmentExpression
+*/
+Parser.prototype.parseExpression = function() {
+    
+    var expr = this.parseAssignmentExpression();
+    
+    if (this.match(',')) {
+        expr = {
+            type: Syntax.SequenceExpression,
+            expressions: [expr]
+        };
+
+        while (1) {
+            if (!this.match(',')) {
+                break;
+            }
+            this.consume();
+            expr.expressions.push(this.parseExpression());
+        }
+    }
+    
+    
+    // this.expect('(');
+    // var expr = this.parseExpression();
+    // this.expect(')');
+    
+    return expr;
+}
+
+/*
     7.4 Comments
 */
 Parser.prototype.parseComment = function() {
@@ -1502,9 +1534,9 @@ Parser.prototype.parseFunctionDeclaration = function() {
     this.expect('def');
     var id = this.parseIdentifier();
     var params = this.parseFormalParameterList();
-    this.inDef = true;
+    this.inFunction = true;
     var body = this.parseFunctionBody();
-    this.inDef = false;
+    this.inFunction = false;
     return {
         type: Syntax.FunctionDeclaration,
         id: id,
@@ -1554,6 +1586,5 @@ Parser.prototype.parseFormalParameterList = function() {
         SourceElements
 */
 Parser.prototype.parseFunctionBody = function() {
-    var indent = this.indent;
     return this.parseBlock();
 }
