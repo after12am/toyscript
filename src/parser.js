@@ -858,7 +858,50 @@ Parser.prototype.parseGroupingOperator = function() {
 }
 
 /*
-    MemberExpression:
+    11.2 Left-Hand-Side Expressions
+    
+    MemberExpression :
+        PrimaryExpression
+        FunctionExpression
+        MemberExpression [ Expression ]
+        MemberExpression . Identifier
+        new MemberExpression Arguments
+*/
+Parser.prototype.parseLeftHandSideExpressions = function() {
+    
+    var expr = this.parseFunctionExpression() || this.parsePrimaryExpression();
+    
+    if (this.match('[')) {
+        return {
+            type: Syntax.MemberExpression,
+            object: expr,
+            member: this.parseMemberExpression(),
+        };
+    }
+    
+    if (this.match('.')) {
+        return {
+            type: Syntax.MemberExpression,
+            object: expr,
+            member: this.parseMemberExpression(),
+        };
+    }
+    
+    if (this.match('(')) {
+        return {
+            type: Syntax.MemberExpression,
+            callee: expr,
+            arguments: this.parseArguments()
+        };
+    }
+    
+    return expr;
+}
+
+/*
+    11.2 Left-Hand-Side Expressions
+    
+    MemberExpression :
         PrimaryExpression
         FunctionExpression
         MemberExpression [ Expression ]
@@ -867,61 +910,55 @@ Parser.prototype.parseGroupingOperator = function() {
 */
 Parser.prototype.parseMemberExpression = function() {
     
-    var expr = this.parsePrimaryExpression();
-    if (expr) {
-        // member expression of List
-        if (this.match('[')) {
-            var member = expr;
-            this.consume();
-            expr = this.parseExpression();
-            this.expect(']');
-            return {
-                type: Syntax.MemberExpression,
-                member: member,
-                expr: expr
-            };
-        }
-        
-        // member expression of Object
-        if (this.match('.')) {
-            this.consume();
-            if (this.token.kind === Token.IDENTIFIER) {
-                return {
-                    type: Syntax.MemberExpression,
-                    member: expr,
-                    expr: this.parseIdentifier()
-                };
-            }
-            console.log(this.token, 'at MemberExpression');
-            throw 'Unexpected token ILLEGAL';
-        }
-        
-        if (this.match('(')) {
-            return {
-                callee: expr,
-                arguments: this.parseArguments()
-            };
-        }
-        
-        return expr;
-    }
-    
-    
-    
-    // not implement
-    // FunctionExpression
-    
-    if (this.match('new')) {
+    if (this.match('[')) {
         this.consume();
-        return {
-            type: Syntax.NewExpression,
-            callee: this.parseMemberExpression(),
-            arguments: this.parseArguments()
+        
+        var object = {
+            type: Syntax.MemberExpression,
+            object: this.parseExpression(),
+            syntax: 'bracket'
         };
+        
+        this.expect(']');
+        
+        if (this.match('[') || this.match('.') || this.match('(')) {
+            object.member = this.parseMemberExpression();
+        }
+        
+        return object;
     }
     
-    // console.log(this.token, 'at MemberExpression');
-    // throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    if (this.match('.')) {
+        this.consume();
+        
+        var object = {
+            type: Syntax.MemberExpression,
+            object: this.parseExpression(),
+            syntax: 'dot'
+        };
+        
+        if (this.match('[') || this.match('.') || this.match('(')) {
+            object.member = this.parseMemberExpression();
+        }
+        
+        return object;
+    }
+    
+    if (this.match('(')) {
+        
+        var object = {
+            type: Syntax.MemberExpression,
+            callee: null,
+            arguments: this.parseArguments(),
+            syntax: 'parenthesis'
+        };
+        
+        if (this.match('[') || this.match('.') || this.match('(')) {
+            object.member = this.parseMemberExpression();
+        }
+        
+        return object;
+    }
 }
 
 /*
@@ -941,7 +978,7 @@ Parser.prototype.parseNewExpression = function() {
         };
     }
     
-    var expr = this.parseMemberExpression();
+    var expr = this.parseLeftHandSideExpressions();
     if (expr) {
         return expr;
     }
@@ -964,7 +1001,7 @@ Parser.prototype.parseCallExpression = function() {
     
     // return {
     //     type: Syntax.CallExpression,
-    //     callee: this.parseMemberExpression(),
+    //     callee: this.parseLeftHandSideExpressions(),
     //     arguments: this.parseArguments()
     // }
 }
@@ -1550,10 +1587,36 @@ Parser.prototype.parseFunctionDeclaration = function() {
     
     FunctionExpression :
         function Identifieropt ( FormalParameterListopt ) { FunctionBody }
+         |
+         v
+        ( expression ): ReturnStatement
 */
 Parser.prototype.parseFunctionExpression = function() {
     
-    
+    // lambda expression
+    // (2): x * x
+    if (this.match('(')) {
+        
+        var k = 1;
+        while (this.lookahead(k++).text === ')') {
+            if (this.lookahead(k).kind === Token.NEWLINE
+             || this.lookahead(k).kind === Token.EOF) break;
+        }
+        
+        if (this.lookahead(++k).text === ':') {
+            var params = this.parseFormalParameterList();
+            this.expect(':');
+            this.inFunction = true;
+            var body = this.parseExpression();
+            this.inFunction = false;
+            return {
+                type: Syntax.FunctionExpression,
+                id: null,
+                params: params,
+                body: body
+            };
+        }
+    }
 }
 
 /*

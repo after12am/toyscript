@@ -7,7 +7,7 @@ var Message = function(token, message, additional) {
 Message.prototype.toString = function() {
     
     if (this.additional) {
-        return this.token.location.toString() + ' ' + this.message + ', ' + this.additional;
+        return this.token.location.toString() + ' ' + this.message + ' ' + this.additional;
     }
     return this.token.location.toString() + ' ' + this.message;
 };
