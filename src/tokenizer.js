@@ -422,7 +422,7 @@ Tokenizer.prototype.scanAssign = function() {
     if (op === '*=' || op === '/=' || op === '%=' || 
         op === '+=' || op === '-=' || op === '&=' || 
         op === '^=' || op === '|=' || op === '<=' ||
-        op === '>=') {
+        op === '>=' || op === '==') {
         this.consume();
         this.consume();
         return new Token(Token.PUNCTUATOR, op, new Location(this.line, this.column));

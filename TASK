@@ -9,6 +9,7 @@
 
 
 [parser.js]
+
 * have to confirm to need to implement 13.2 Creating Function Objects
 * give message argument to expect function
 * stil not implement 12.6 Iteration Statements
@@ -18,6 +19,15 @@
 * have to read carefully 7.8.4 String Literals
 * have to implement 7.8.5 Regular Expression Literals
 * have to read 7.9 Automatic Semicolon Insertion, but I think this is under tested.
+* implement 11.4.3 The typeof Operator as type() function
+* could not implement MemberExpression. too difficult.
+* new MemberExpression Arguments // a[new A()]
+* CallExpression // a()
+* instanceof a -> instance(a)
+* typeof a -> type(a)
+* decide conditional expression grammer
+* raise -> throw new Error("");
+
 
 [build-in]
 

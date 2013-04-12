@@ -116,40 +116,53 @@ Compiler.prototype.compile = function() {
         'error': log.hasError()
     }
 }
+// src/format.js
+if (String.prototype.format == undefined) {
+	String.prototype.format = function(arg) {
+		
+        var rep_fn = undefined;
+        
+        if (typeof arg == "object") {
+            rep_fn = function(m, k) { return arg[k]; }
+        } else {
+            var args = arguments;
+            rep_fn = function(m, k) { return args[parseInt(k)]; }
+        }
+        
+        return this.replace(/\{(\w+)\}/g, rep_fn);
+    }
+}
 // src/lexer.js
-var Lexer = function(source) {
-    this.source = source || '';
-    this.p = 0;
-    this.column = 1;
-    this.c = this.source[this.p];
+var Lexer = function() {
+    
 }
 
-Lexer.prototype.consume = function() {
-    if (this.c == '\n' || this.c == '\r') {
-        this.column = 0;
-    } else {
-        this.column++;
-    }
-    this.p++;
-    if (this.p < this.source.length) {
-        this.c = this.source[this.p];
-    } else {
-        this.c = Token.EOF;
-    }
-}
+/*
+    7.2 White Space
 
-Lexer.prototype.lookahead = function(k) {
-    if (this.p + k < this.source.length) {
-        return this.source[this.p + k];
-    } else {
-        return Token.EOF;
-    }
-}
-
-// issue: change to class method from instance method 
-
+    WhiteSpace ::
+        <TAB>
+        <VT>
+        <FF>
+        <SP>
+        <NBSP>
+        <USP>
+*/
 Lexer.prototype.isWhiteSpace = function(c) {
-    return c.match(/\s/);
+    return c.match(/^\s$/) && !this.isLineTerminator(c);
+}
+
+/*
+    7.3 Line Terminators
+    
+    LineTerminator ::
+        <LF>
+        <CR>
+        <LS>
+        <PS>
+*/
+Lexer.prototype.isLineTerminator = function(c) {
+    return c === '\n' || c === '\r' || c === '\u2028' || c === '\u2029';
 }
 
 Lexer.prototype.isDigit = function(c) {
@@ -157,11 +170,34 @@ Lexer.prototype.isDigit = function(c) {
 }
 
 Lexer.prototype.isLetter = function(c) {
-    return c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_";
+    return c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_" || c === "$";
 }
 
-Lexer.prototype.isLineTerminator = function(c) {
-    return c == '\n' || c == '\r';// || c == '\r\n';
+Lexer.prototype.matchAssign = function(op) {
+    
+    // 4character assignment
+    if (op === '>>>=') {
+        return true;
+    }
+    
+    // 3character assignment
+    if (op === '<<=' || op === '>>=' || op === '!==' || op === '===') {
+        return true;
+    }
+    
+    // 2character assignment
+    if (op === '*=' || op === '/=' || op === '%=' || 
+        op === '+=' || op === '-=' || op === '&=' || 
+        op === '^=' || op === '|=') {
+        return true;
+    }
+    
+    // 1character assignment
+    if (op === '=') {
+        return true;
+    }
+    
+    return false;
 }
 // src/location.js
 var Location = function(line, column) {
@@ -225,6 +261,48 @@ Log.prototype.hasError = function() {
     }
     return false;
 };
+// src/message.js
+var Message = function(token, message) {
+    this.token = token;
+    this.message = message;
+};
+
+Message.prototype.toString = function() {
+    var data = {
+        "location": this.token.location.toString(), 
+        "message": this.message
+    };
+    return "{location} {message}".format(data);
+};
+
+Message.UnknownToken = 'Unknown token';
+Message.UnexpectedToken = 'Unexpected token';
+Message.IllegalIdent = 'Illegal identifier';
+Message.UnexpectedString = 'Unexpected string';
+Message.IllegalComment = 'Illegal comment';
+Message.IllegalBlock = 'Block statement must have one statement at least';
+Message.IndentFor = 'Illegal for statement';
+Message.IndentWhile = 'Indent while statement';
+Message.IllegalContinue = 'Continue statement can not have label';
+Message.IllegalContinuePosition = 'Continue statement have to be declared in iteration';
+Message.IllegalBreak = 'Break statement can not have label';
+Message.IllegalBreakPosition = 'Break statement have to be declared in iteration';
+Message.IllegalReturn = 'Return statement has to be contained in function';
+Message.IllegalReturnArgument = 'Return argument has to be one';
+Message.IllegalRaise = 'Illegal raise statement';
+Message.IllegalRaiseArgument =  'Raise argument has to be one';
+Message.IllegalExcept = 'Illegal raise statement';
+Message.IllegalFinally = 'Illegal finally statement';
+Message.IndentSize = 'Indent size may be incorrect';
+Message.IllegalIdentifier = 'Illegal identifier';
+Message.IllegalArgumentList = 'Illegal arguments';
+Message.IllegalPostfixIncrement = 'Postfix increment operator is only for identifier';
+Message.IllegalPostfixDecrement = 'Postfix decrement operator is only for identifier';
+Message.IllegalPrefixIncrement = 'Prefix increment operator is only for identifier';
+Message.IllegalPrefixDecrement = 'Prefix decrement operator is only for identifier';
+Message.IllegalMultiplicativeExpression = 'Illegal multiplicative expression';
+Message.IllegalShiftExpression = 'Illegal shift expression';
+Message.IllegalRelationalExpression = 'Illegal relational expression';
 // src/parser.js
 // http://www2u.biglobe.ne.jp/~oz-07ams/prog/ecma262r3/
 
@@ -232,50 +310,14 @@ var Parser = function(tokens, log) {
     this.p = 0;
     this.tokens = tokens;
     this.token = this.tokens[this.p];
-    this.indent_size;
+    this.indent_size = 4;
     this.indent = 0;
+    this.inFunction = false;
+    this.inIteration = false;
     this.log = log || new Log();
-    this.nodes = [];
 }
 
-Parser.prototype.match = function(text) {
-    return (this.token.text == text);
-}
-
-Parser.prototype.matchAssign = function() {
-    
-    var op = this.token.text;
-    
-    // 4character assignment
-    // var op = this.token.text + this.lookahead(1).text + this.lookahead(2).text + this.lookahead(3).text;
-    if (op === '>>>=') {
-        return op;
-    }
-    
-    // 3character assignment
-    // var op = this.token.text + this.lookahead(1).text + this.lookahead(2).text;
-    if (op === '<<=' || op === '>>=' || op === '!==' || op === '===') {
-        return op;
-    }
-    
-    // 2character assignment
-    // var op = this.token.text + this.lookahead(1).text;
-    
-    //console.log(op)
-    
-    if (op === '*=' || op === '/=' || op === '%=' || 
-        op === '+=' || op === '-=' || op === '&=' || 
-        op === '^=' || op === '|=') {
-        return op;
-    }
-    
-    // 1character assignment
-    // var op = this.token.text;
-    if (op === '=') {
-        return op;
-    }
-}
-
+Parser.prototype = new Lexer();
 Parser.prototype.consume = function(k) {
     k = k || 1;
     while (k > 0) {
@@ -289,102 +331,144 @@ Parser.prototype.consume = function(k) {
     }
 }
 
-Parser.prototype.expect = function(text) {
-    if (this.token.text !== text) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+Parser.prototype.match = function(text) {
+    return (this.token.text === text);
+}
+
+Parser.prototype.matchKind = function(kind) {
+    return (this.token.kind === kind);
+}
+
+Parser.prototype.expect = function(value, message) {
+    if (this.token.text !== value) {
+        if (message) throw message;
+        var data = {
+            "location": this.token.location.toString(), 
+            "unexpected": this.token.text,
+            "expected": value
+        };
+        throw "{location} Unexpected token \"{unexpected}\" expecting \"{expected}\"".format(data);
     }
     this.consume();
 }
 
+Parser.prototype.expectKind = function(value, message) {
+    if (this.token.kind !== kind) {
+        if (message) throw message;
+        var data = {
+            "location": this.token.location.toString(), 
+            "unexpected": this.token.kind,
+            "expected": value
+        };
+        throw "{location} Unexpected token \"{unexpected}\" expecting \"{expected}\"".format(data);
+    }
+    this.consume();
+}
+
+/*
+    LL(k)
+*/
 Parser.prototype.lookahead = function(k) {
     if (this.p + k < this.tokens.length) {
         return this.tokens[this.p + k];
-    } else {
-        return new Token(Token.EOF, '', this.tokens[this.tokens.length - 1].location);
     }
+    return new Token(Token.EOF, '', this.tokens[this.tokens.length - 1].location);
 }
 
-Parser.prototype.parse = function() {
-    
-    // set indent size
-    for (var i = 0; i < this.tokens.length; i++) {
-        if (this.tokens[i].kind === Token.INDENT) {
-            if (this.tokens[i].text > 0) {
-                this.indent_size = this.tokens[i].text;
-                break;
-            }
-        }
+/*
+Parser.prototype.lookback = function(k) {
+    if (this.p - k >= 0) {
+        return this.tokens[this.p - k];
     }
-    
+    return this.tokens[0];
+}
+
+Parser.prototype.updateIndent = function() {
+    if (this.indent_size * this.indent < this.token.text) {
+        this.indent++;
+    } else if (this.indent_size * this.indent > this.token.text) {
+        this.indent--;
+    }
+}
+*/
+
+// alias of Parser.parseProgram
+Parser.prototype.parse = function() {
     return this.parseProgram();
 }
 
 /*
+    14 Program
+    
     Program:
         SourceElements
 */
 Parser.prototype.parseProgram = function() {
+    
+    for (var i = 1; i < this.tokens.length; i++) {
+        if (this.tokens[i].kind === Token.INDENT) {
+            this.indent_size = this.tokens[i].text;
+            break;
+        }
+    }
     this.p = 0;
     return this.parseSourceElements();
 }
 
 /*
-    SourceElements:
+    14 Program
+    
+     SourceElements:
         SourceElement
         SourceElements SourceElement
 */
 Parser.prototype.parseSourceElements = function() {
     
-    this.expect(0);
+    var nodes = [];
     
     while (1) {
-        
-        if (this.token.kind === Token.EOF) {
-            this.consume();
+        // the first token would be Token.Indent. 
+        if (this.lookahead(1).kind === Token.EOF) {
             break;
         }
         
-        var e = this.parseSourceElement();
-        if (e) {
-            this.indent = 0;
-            this.nodes.push(e);
-        }
+        // reset indent
+        this.expect(0);
+        this.indent = 0;
+        nodes.push(this.parseSourceElement());
+        
+        // line terminator of eof
+        if (this.matchKind(Token.NEWLINE)) this.consume();
     }
     
-    return this.nodes;
+    return nodes;
 }
 
 /*
+    14 Program
+    
     SourceElement:
         Statement
         FunctionDeclaration
 */
 Parser.prototype.parseSourceElement = function() {
     
-    var statement;
-    
-    // delete
-    // if (this.token.kind === Token.NEWLINE) {
-    //     this.consume();
-    // }
-    
-    if (statement = this.parseStatement()) {
-        return statement;
+    var statements = this.parseStatement();
+    if (statements) {
+        return statements;
     }
     
-    // if (statement = this.parseFunctionDeclaration()) {
-    //     return statement;
-    // }
-}
-
-Parser.prototype.parseFunctionDeclaration = function() {
-    
+    var statements = this.parseFunctionDeclaration();
+    if (statements) {
+        return statements;
+    }
 }
 
 /*
-    Statement:
+    12 Statements
+    
+    Statement :
         Block
-        VariableStatement
         EmptyStatement
         ExpressionStatement
         IfStatement
@@ -392,156 +476,156 @@ Parser.prototype.parseFunctionDeclaration = function() {
         ContinueStatement
         BreakStatement
         ReturnStatement
-        ThrowStatement
+        RaiseStatement
         TryStatement
 */
 Parser.prototype.parseStatement = function() {
     
-    // syntax check around indent
+    // if (this.token.kind === Token.INDENT) {
+    //     this.updateIndent();
+    //     this.consume();
+    //     return this.parseStatement();
+    // }
+    
     if (this.token.kind === Token.INDENT) {
-        if (this.indent_size * this.indent < this.token.text) {
-            this.indent++;
-        } else if (this.indent_size * this.indent > this.token.text) {
-            this.indent--;
-        }
         this.consume();
         return this.parseStatement();
     }
     
-    if (this.token.kind === Token.NEWLINE) {
-        var expr = {
-            type: Syntax.NEWLINE,
-            value: this.token.text
-        };
-        this.consume();
-        // also plays a role of EmptyStatement by not ignoring newline.
-        return expr;
-        // ignore newline
-        //return this.parseStatement();
-    }
-    
-    // syntax check around ident
-    if (this.token.kind === Token.IDENTIFIER) {
-        // ident statement only
-        if (this.lookahead(1).kind == Token.EOF 
-         || this.lookahead(1).kind == Token.NEWLINE) {
-            throw this.token.location.toString() + ', Syntax error';
+    if (this.matchKind(Token.PUNCTUATOR)) {
+        if (this.match(':')) {
+            return this.parseBlock();
         }
     }
     
-    if (this.token.kind === Token.KEYWORDS.IF) {
-        return this.parseIfStatement();
-    }
-    
-    if (this.token.kind === Token.KEYWORDS.WHILE 
-     || this.token.kind === Token.KEYWORDS.FOR) {
-        return this.parseIterationStatement();
-    }
-    
-    if (this.token.kind === Token.KEYWORDS.CONTINUE) {
-        return this.parseContinueStatement();
-    }
-    
-    if (this.token.kind === Token.KEYWORDS.BREAK) {
-        return this.parseBreakStatement();
-    }
-    
-    if (this.token.kind === Token.KEYWORDS.RETURN) {
-        return this.parseReturnStatement();
-    }
-    
-    if (this.token.kind === Token.KEYWORDS.RAISE) {
-        return this.parseRaiseStatement();
-    }
-    
-    if (this.token.kind === Token.KEYWORDS.TRY) {
-        return this.parseTryStatement();
-    }
-    
-    
-    if (this.match(':')) {
-        this.consume();
-        // expect newline
-        this.consume();
-        return this.parseBlock();
-    }
-    
-    
-    
-    
     switch (this.token.kind) {
-        // case Token.IDENTIFIER:
-        // case Token.BOOLEAN:
-        // case Token.PUNCTUATOR:
-        //     return this.parseVariableStatement();
-        case Token.SINGLE_LINE_COMMENT:
-            return this.parseComment();
-        default:
-            //console.log(this.token)
-            //throw 'Unknown token ' + this.token;
+    case Token.NEWLINE: return this.parseEmptyStatement();
+    case Token.KEYWORDS.IF: return this.parseIfStatement();
+    case Token.KEYWORDS.WHILE: return this.parseIterationStatement(); 
+    case Token.KEYWORDS.FOR: return this.parseIterationStatement();
+    case Token.KEYWORDS.CONTINUE: return this.parseContinueStatement();
+    case Token.KEYWORDS.BREAK: return this.parseBreakStatement();
+    case Token.KEYWORDS.RETURN: return this.parseReturnStatement();
+    case Token.KEYWORDS.RAISE: return this.parseRaiseStatement();
+    case Token.KEYWORDS.TRY: return this.parseTryStatement();
+    case Token.COMMENT: return this.parseComment();
+    default: return this.parseExpressionStatement();
     }
-    
-    var expr = this.parseExpression();
-    if (expr) {
-        return expr;
-    }
-    
-    
 }
 
 /*
+    12.1 Block
+    
     Block:
-        { StatementList }
+        : LineTerminator StatementList
 */
 Parser.prototype.parseBlock = function() {
-    return this.parseStatementList();
+    
+    this.expect(':');
+    
+    // for allowing below one liner code
+    // example) if a: a = 1
+    if (this.matchKind(Token.NEWLINE)) {
+        this.consume();
+    }
+    
+    var token = this.token;
+    this.indent++;
+    var exprs = this.parseStatementList();
+    this.indent--;
+    
+    var pass = exprs.reduce(function(p, c) {
+        return p || c.type !== Syntax.NEWLINE;
+    }, false);
+    
+    if (!pass) {
+        throw new Message(this.token, Message.IllegalBlock).toString();
+    }
+    
+    return {
+        type: Syntax.BlockStatement,
+        body: exprs
+    };
 }
 
 /*
+    12.1 Block
+    
     StatementList:
         Statement
         StatementList Statement
 */
 Parser.prototype.parseStatementList = function() {
     
-    var exprs = [this.parseStatement()];
+    var exprs = [];
     var indent = this.indent * this.indent_size;
     
     while (1) {
         
-        // ignore newline token
-        if (this.token.kind === Token.NEWLINE) {
+        if (this.token.kind === Token.EOF) break;
+        if (this.token.kind === Token.NEWLINE) { // ignore newline token
             this.consume();
-        }
-        
-        if (this.token.kind === Token.EOF) {
-            break;
+            continue;
         }
         
         if (this.token.kind === Token.INDENT) {
-            if (this.indent_size * this.indent < this.token.text) {
-                this.indent++;
-            } else if (this.indent_size * this.indent > this.token.text) {
-                this.indent--;
-            }
-            if (this.token.text < indent) {
-                break;
+            if (this.token.text < indent) break;
+            if (this.token.text > indent) {
+                throw new Message(this.token, Message.IndentSize).toString();
             }
             this.consume();
+            continue;
         }
         
-        if (expr = this.parseStatement()) {
-            exprs.push(expr);
-        }
+        exprs.push(this.parseStatement());
+    }
+    
+    if (exprs.length > 0) {
+        exprs[exprs.length - 1].last = true;
     }
     
     return exprs;
 }
 
 /*
-    IfStatement:
-        if ( Expression ) Statement else Statement
-        if ( Expression ) Statement
+    12.3 Empty Statement
+    
+    EmptyStatement :
+        LineTerminator
+*/
+Parser.prototype.parseEmptyStatement = function() {
+    
+    var token = this.token;
+    this.expectKind(Token.NEWLINE);
+    
+    // If switching to below, ignores newline.
+    //return this.parseStatement();
+    return {
+        type: Syntax.NEWLINE,
+        value: token.text
+    };
+}
+
+/*
+    12.4 Expression Statement
+    
+    ExpressionStatement :
+        [lookahead ∉ {:, def} ] Expression ;
+*/
+Parser.prototype.parseExpressionStatement = function() {
+    
+    if (this.match('def') || this.match(':')) {
+        return;
+    }
+    return this.parseExpression();
+}
+
+/*
+    12.5 The if Statement
+    
+    IfStatement :
+        if Expression: Statement else Statement
+        if Expression: Statement
 */
 Parser.prototype.parseIfStatement = function() {
     
@@ -551,31 +635,19 @@ Parser.prototype.parseIfStatement = function() {
     this.expect('if');
     
     var expr = this.parseExpression();
-    if (!expr) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-    }
-    
     var exprs = this.parseStatement();
-    if (!exprs[0]) {
-        throw this.token.location.toString() + ', SyntaxError: No statement';
+    
+    if (this.matchKind(Token.INDENT)) {
+        if (!this.match(indent)) {
+            throw new Message(this.token, Message.IndentSize).toString();
+        }
+        this.consume();
     }
     
-    if (this.token.kind !== Token.EOF) {
-        // expect indent token
-        this.expect(indent);
-        if (this.match('else')) {
-            this.consume();
-            // else statement
-            if (this.match(':')) {
-                return {
-                    type: Syntax.IfStatement,
-                    statements: this.parseStatement()
-                };
-            }
-            if (this.match('if')) {
-                alternate = this.parseStatement();
-            }
-        }
+    if (this.match('else')) {
+        this.consume();
+        // else if || else
+        alternate = this.parseStatement();
     }
     
     return {
@@ -587,297 +659,268 @@ Parser.prototype.parseIfStatement = function() {
 }
 
 /*
-    IterationStatement:
-        while ( Expression ) Statement
-        for ( LeftHandSideExpression in Expression ) Statement
+    12.6 Iteration Statements
+    
+    IterationStatement :
+        while Expression: Statement
+        for LeftHandSideExpression in Expression: Statement
 */
 Parser.prototype.parseIterationStatement = function() {
     
     if (this.match('while')) {
-        
-        // consume while keyword
         this.consume();
-        
-        var expr = this.parseExpression();
-        if (!expr) {
-            throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+        try {
+            var expr = this.parseExpression();
+        } catch (e) {
+            throw new Message(this.token, Message.IndentWhile).toString();
         }
         
-        var exprs = this.parseStatement();
-        if (!exprs[0]) {
-            throw this.token.location.toString() + ', SyntaxError: No statement';
-        }
+        this.inIteration = true;
+        var body = this.parseStatement();
+        this.inIteration = false;
         
         return {
             type: Syntax.WhileStatement,
             condition: expr,
-            statements: exprs
+            body: body
         };
     }
     
     if (this.match('for')) {
-        
-        // consume for keyword
         this.consume();
         
-        if (this.lookahead(1).text !== 'in') {
-            throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+        var arguments = [];
+        while (1) {
+            if (this.match('in')) break;
+            if (this.match(',')) this.consume();
+            arguments.push(this.parseLeftHandSideExpression());
         }
-        
-        var left = this.parseExpression();
-        if (!left) {
-            throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-        }
-        
         this.expect('in');
         
-        var expr = this.parseExpression();
-        if (!expr) {
-            throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+        try {
+            var right = this.parseExpression();
+        } catch (e) {
+            throw new Message(this.token, Message.IndentFor).toString();
         }
         
-        var exprs = this.parseStatement();
-        if (!exprs[0]) {
-            throw this.token.location.toString() + ', SyntaxError: No statement';
-        }
+        this.inIteration = true;
+        var body = this.parseStatement();
+        this.inIteration = false;
         
         return {
             type: Syntax.ForInStatement,
-            left: left,
-            right: expr,
-            statements: exprs
+            arguments: arguments,
+            right: right,
+            body: body
         };
     }
 }
 
 /*
-    ContinueStatement:
+    12.7 The continue Statement
+    
+    ContinueStatement :
         continue
 */
 Parser.prototype.parseContinueStatement = function() {
+    
     this.consume();
+    if (!(this.token.kind === Token.NEWLINE 
+       || this.token.kind === Token.EOF)) {
+        throw new Message(this.token, Message.IllegalContinue).toString();
+    }
+    
+    if (!this.inIteration) {
+        throw new Message(this.token, Message.IllegalContinuePosition).toString();
+    }
+    
     return {
         type: Syntax.ContinueStatement
     };
 }
 
 /*
-    BreakStatement:
+    12.8 The break Statement
+    
+    BreakStatement :
         break
 */
 Parser.prototype.parseBreakStatement = function() {
+    
     this.consume();
+    if (!(this.token.kind === Token.NEWLINE 
+       || this.token.kind === Token.EOF)) {
+        throw new Message(this.token, Message.IllegalBreak).toString();
+    }
+    
+    if (!this.inIteration) {
+        throw new Message(this.token, Message.IllegalBreakPosition).toString();
+    }
+    
     return {
         type: Syntax.BreakStatement
     };
 }
 
 /*
-    ReturnStatement:
-        return Expression
+    12.9 The return Statement
+    
+    ReturnStatement :
+    return [LineTerminator 無し] Expressionopt ;
 */
 Parser.prototype.parseReturnStatement = function() {
+    
     this.consume();
-    var expr = this.parseExpression();
-    if (!expr) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    if (!this.inFunction) {
+        throw new Message(this.token, Message.IllegalReturn).toString();
     }
+    
+    var argument = null;
+    if (!(this.token.kind === Token.NEWLINE 
+       || this.token.kind === Token.EOF)) {
+        argument = this.parseExpression();
+    }
+    
+    if (!(this.token.kind === Token.NEWLINE 
+       || this.token.kind === Token.EOF)) {
+        throw new Message(this.token, Message.IllegalReturnArgument).toString();
+    }
+    
     return {
         type: Syntax.ReturnStatement,
-        expr: expr
+        argument: argument
     };
 }
 
 /*
-    RaiseStatement:
-        raise Expression
+    12.13 The throw statement
+    
+    RaiseStatement :
+        raise [LineTerminator 無し] Expression
 */
 Parser.prototype.parseRaiseStatement = function() {
+    
+    var argument = null;
     this.consume();
-    var expr = this.parseExpression();
-    if (!expr) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    if (!(this.token.kind === Token.NEWLINE 
+       || this.token.kind === Token.EOF)) {
+        argument = this.parseExpression()
     }
+    
     return {
         type: Syntax.RaiseStatement,
-        expr: expr
+        argument: argument
     };
 }
 
 /*
-    TryStatement:
-        try Block except
-        try Block finally
-        try Block except finally
+    12.14 The try statement
+    
+    TryStatement :
+        try Block Catch
+        try Block Finally
+        try Block Catch Finally
 */
 Parser.prototype.parseTryStatement = function() {
     
-    this.consume();
-    
-    var except;
     var indent = this.indent * this.indent_size;
+    var handlers = [];
+    var finalizer = null;
     
-    var exprs = this.parseStatement();
-    if (!exprs[0]) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    this.expect('try');
+    var block = this.parseBlock();
+    this.expect(indent);
+    
+    while (this.match('except')) {
+        handlers.push(this.parseExceptStatement());
+        this.expect(indent);
     }
     
-    if (this.indent_size * this.indent !== this.token.text) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-    }
-    this.consume();
-    
-    if (this.match('except')) {
-        except = this.parseExceptStatement();
-    }
-    
-    if (!except) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-    }
-    
-    if (this.lookahead(1).text === 'finally') {
-        
-        if (this.indent_size * this.indent !== this.token.text) {
-            throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-        }
-        
-        this.consume();
-        
-        if (this.match('finally')) {
-            
-            var fin = this.parseFinallyStatement();
-            if (!fin) {
-                throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
-            }
-            
-            return {
-                type: Syntax.TryStatement,
-                try: exprs,
-                except: except,
-                fin: fin
-            };
-        }
+    if (this.match('finally')) {
+        finalizer = this.parseFinallyStatement();
     }
     
     return {
         type: Syntax.TryStatement,
-        try: exprs,
-        except: except
+        block: block,
+        handlers: handlers,
+        finalizer: finalizer
     };
 }
 
 /*
-    Except:
-        except (Identifier) Block
+    12.14 The try statement
+    
+    Except :
+        except Identifieropt: Block
 */
 Parser.prototype.parseExceptStatement = function() {
-    this.consume();
-    if (this.token.kind !== Token.IDENTIFIER) {
-        throw this.token.location.toString() + ', SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    
+    var param = null;
+    this.expect('except');
+    if (!this.match(':')) {
+        param = this.parseIdentifier();
     }
+    
     return {
         type: Syntax.ExceptStatement,
-        expr: this.parseInitialiser(),
-        statements: this.parseStatement()
+        param: param,
+        body: this.parseBlock()
     };
 }
 
 /*
+    12.14 The try statement
+    
     Finally:
         finally Block
 */
 Parser.prototype.parseFinallyStatement = function() {
+    
     this.consume();
+    if (!this.match(':')) {
+        throw new Message(this.token, Message.IllegalFinally).toString();
+    }
+    
     return {
         type: Syntax.FinallyStatement,
-        statements: this.parseStatement()
+        body: this.parseBlock()
     };
 }
 
 /*
-    VariableStatement:
+    VariableStatement :
         var VariableDeclarationList ;
 */
 Parser.prototype.parseVariableStatement = function() {
-    
-    var expr = this.parseVariableDeclarationList();
-    
-    // not implemented
-    
-    return expr;
+    return this.parseVariableDeclarationList();
 }
 
 /*
-    VariableDeclarationList:
+    VariableDeclarationList :
         VariableDeclaration
         VariableDeclarationList , VariableDeclaration
 */
 Parser.prototype.parseVariableDeclarationList = function() {
-    
-    var expr = this.parseVariableDeclaration();
-    
-    // not implemented
-    
-    return expr;
+    return this.parseVariableDeclaration();
 }
 
 /*
-    VariableDeclaration:
+    VariableDeclaration :
         Identifier Initialiser
 */
 Parser.prototype.parseVariableDeclaration = function() {
-    
-    var expr = this.parseInitialiser();
-    
-    // not implemented
-    
-    return expr;
+    return this.parseInitialiser();
 }
 
 Parser.prototype.parseInitialiser = function() {
-    
-    var expr = this.parseAssignmentExpression();
-    
-    // not implemented
-    
-    return expr;
+    return this.parseAssignmentExpression();
 }
 
 /*
-    Expressions
-    	AssignmentExpression
-        Expression , AssignmentExpression
-*/
-Parser.prototype.parseExpression = function() {
+    11.1 Primary Expressions
     
-    var expr = this.parseAssignmentExpression();
-    if (expr) {
-        if (this.match(',')) {
-            expr = {
-                type: Syntax.SequenceExpression,
-                expressions: [expr]
-            };
-
-            while (1) {
-                if (!this.match(',')) {
-                    break;
-                }
-                this.consume();
-                expr.expressions.push(this.parseExpression());
-            }
-        }
-        return expr;
-    }
-    
-    this.expect('(');
-    var expr = this.parseExpression();
-    this.expect(')');
-    
-    return expr;
-}
-
-/*
-    PrimaryExpression:
+    PrimaryExpression :
         this
         Identifier
         Literal
@@ -888,66 +931,64 @@ Parser.prototype.parseExpression = function() {
 Parser.prototype.parsePrimaryExpression = function() {
     
     if (this.token.kind === Token.KEYWORDS.THIS) {
-        var token = this.token;
         this.consume();
         return {
-            type: Syntax.This,
-            value: token.text 
+            type: Syntax.ThisExpression
         };
     }
     
     if (this.token.kind === Token.IDENTIFIER) {
-        var token = this.token;
-        this.consume();
-        return {
-            type: Syntax.Identifier,
-            value: token.text 
-        };
+        return this.parseIdentifier();
     }
     
-    if (this.token.kind === Token.NONE || this.token.kind === Token.BOOLEAN
-     || this.token.kind === Token.DIGIT || this.token.kind === Token.STRING) {
+    if (this.token.kind === Token.KEYWORDS.NONE 
+     || this.token.kind === Token.BOOLEAN
+     || this.token.kind === Token.DIGIT 
+     || this.token.kind === Token.STRING) {
         return this.parseLiteral();
     }
     
     if (this.token.kind === Token.PUNCTUATOR) {
-        
-        if (this.match('[')) {
-            return this.parseArrayLiteral();
-        }
-        
-        if (this.match('{')) {
-            return this.parseObjectLiteral();
-        }
-        
-        if (this.match('(')) {
-            // consume() should not be written in here.
-            //this.consume();
-            var expr = this.parseExpression();
-            // consume() should not be written in here.
-            //this.expect(')');
-            // return expr;
-            return {
-                type: Syntax.Grouping,
-                expr: expr
-            };
-        }
+        if (this.match('[')) return this.parseArrayInitialiser();
+        if (this.match('{')) return this.parseObjectInitialiser();
+        if (this.match('(')) return this.parseGroupingOperator();
     }
     
-    console.log(this.token, 'at PrimaryExpression');
-    throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    throw new Message(this.token, Message.UnexpectedToken, '\'' + this.token.text + '\'').toString();
 }
 
 /*
-    Literal:
-        NoneLiteral
+    11.1.2 Identifier Reference
+*/
+Parser.prototype.parseIdentifier = function() {
+    
+    // if (this.lookahead(1).kind == Token.EOF 
+    //  || this.lookahead(1).kind == Token.NEWLINE) {
+    //     if (this.lookback(1).kind !== Token.PUNCTUATOR) {
+    //         throw new Message(this.token, Message.IllegalIdentifier).toString();
+    //     }
+    // }
+    
+    var token = this.token;
+    this.consume();
+    return {
+        type: Syntax.Identifier,
+        value: token.text 
+    };
+}
+
+/*
+    7.8 Literals
+    
+    Literal ::
+        NullLiteral
         BooleanLiteral
         NumericLiteral
         StringLiteral
 */
 Parser.prototype.parseLiteral = function() {
     
-    if (this.token.kind === Token.NONE) {
+    if (this.token.kind === Token.KEYWORDS.NONE) {
         var token = this.token;
         this.consume();
         return {
@@ -985,87 +1026,99 @@ Parser.prototype.parseLiteral = function() {
 }
 
 /*
-    ArrayLiteral:
-        [ ]
-        [ ElementList ]
-*/
-Parser.prototype.parseArrayLiteral = function() {
+    11.1.4 Array Initialiser
     
+    ArrayLiteral :
+        [ Elisionopt ]
+        [ ElementList ]
+        [ ElementList , Elisionopt ] <- ban
+*/
+Parser.prototype.parseArrayInitialiser = function() {
     this.expect('[');
     var eles = this.parseElementList();
     this.expect(']');
-    
     return {
-        type: Syntax.ArrayLiteral,
+        type: Syntax.ArrayExpression,
         elements: eles
     };
 }
 
 /*
-    ElementList:
+    11.1.4 Array Initialiser
+    
+    ElementList :
+        Elisionopt AssignmentExpression
+        ElementList , Elisionopt AssignmentExpression
+            |
+            V
         AssignmentExpression
-        ElementList AssignmentExpression
+        ElementList, AssignmentExpression
 */
 Parser.prototype.parseElementList = function() {
-    
-    var eles = [];
-    
+    var elements = [];
     while (!this.match(']')) {
-        if (this.match(',')) {
-            this.consume();
-            continue;
-        }
-        eles.push(this.parseAssignmentExpression());
+        if (this.match(',')) this.consume();
+        elements.push(this.parseAssignmentExpression());
     }
-    return eles;
+    return elements;
 }
 
 /*
-    ObjectLiteral:
+    11.1.4 Array Initialiser
+    
+    Elision :
+        ,
+        Elision ,
+*/
+Parser.prototype.parseElision = function() {
+    // not implemented
+}
+
+/*
+    11.1.5 Object Initialiser
+    
+    ObjectLiteral :
         { }
         { PropertyNameAndValueList }
 */
-Parser.prototype.parseObjectLiteral = function() {
-    
+Parser.prototype.parseObjectInitialiser = function() {
     this.expect('{');
     var props = this.parsePropertyNameAndValueList()
     this.expect('}');
-    
     return {
-        type: Syntax.ObjectLiteral,
+        type: Syntax.ObjectExpression,
         properties: props
     };
 }
 
 /*
-    PropertyNameAndValueList:
+    11.1.5 Object Initialiser
+    
+    PropertyNameAndValueList :
         PropertyName : AssignmentExpression
-        PropertyNameAndValueList , PropertyName
+        PropertyNameAndValueList , PropertyName : AssignmentExpression
 */
 Parser.prototype.parsePropertyNameAndValueList = function() {
-    
     var props = [];
-    
     while (!this.match('}')) {
         if (this.match(',')) {
             this.consume();
-            continue;
         }
-        
         var name = this.parsePropertyName();
         this.expect(':');
-        
         props.push({
             type: Syntax.Property,
-            left: name,
-            right: this.parseAssignmentExpression()
+            name: name,
+            value: this.parseAssignmentExpression()
         });
     }
     return props;
 }
 
 /*
-    PropertyName:
+    11.1.5 Object Initialiser
+    
+    PropertyName :
         Identifier
         StringLiteral
         NumericLiteral
@@ -1077,7 +1130,7 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.Identifier,
-            value: token.text 
+            name: token.text 
         };
     }
     
@@ -1086,7 +1139,7 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.StringLiteral,
-            value: token.text
+            name: token.text
         };
     }
     
@@ -1095,13 +1148,71 @@ Parser.prototype.parsePropertyName = function() {
         this.consume();
         return {
             type: Syntax.NumericLiteral,
-            value: token.text
+            name: token.text
         };
     }
 }
 
 /*
-    MemberExpression:
+    11.1.6 The Grouping Operator
+    
+    ( Expression )
+*/
+Parser.prototype.parseGroupingOperator = function() {
+    this.expect('(');
+    var expr = this.parseExpression();
+    this.expect(')');
+    return {
+        type: Syntax.GroupingExpression,
+        expr: expr
+    };
+}
+
+/*
+    11.2 Left-Hand-Side Expressions
+    
+    MemberExpression :
+        PrimaryExpression
+        FunctionExpression
+        MemberExpression [ Expression ]
+        MemberExpression . Identifier
+        new MemberExpression Arguments
+*/
+Parser.prototype.parseLeftHandSideExpressions = function() {
+    
+    var expr = this.parseFunctionExpression() || this.parsePrimaryExpression();
+    
+    if (this.match('[')) {
+        return {
+            type: Syntax.MemberExpression,
+            object: expr,
+            member: this.parseMemberExpression(),
+        };
+    }
+    
+    if (this.match('.')) {
+        return {
+            type: Syntax.MemberExpression,
+            object: expr,
+            member: this.parseMemberExpression(),
+        };
+    }
+    
+    if (this.match('(')) {
+        return {
+            type: Syntax.MemberExpression,
+            callee: expr,
+            arguments: this.parseArguments()
+        };
+    }
+    
+    return expr;
+}
+
+/*
+    11.2 Left-Hand-Side Expressions
+    
+    MemberExpression :
         PrimaryExpression
         FunctionExpression
         MemberExpression [ Expression ]
@@ -1110,65 +1221,61 @@ Parser.prototype.parsePropertyName = function() {
 */
 Parser.prototype.parseMemberExpression = function() {
     
-    var expr = this.parsePrimaryExpression();
-    if (expr) {
-        // member expression of List
-        if (this.match('[')) {
-            var member = expr;
-            this.consume();
-            expr = this.parseExpression();
-            this.expect(']');
-            return {
-                type: Syntax.MemberExpression,
-                member: member,
-                expr: expr
-            };
-        }
-        
-        // member expression of Object
-        if (this.match('.')) {
-            this.consume();
-            if (this.token.kind === Token.IDENTIFIER) {
-                return {
-                    type: Syntax.MemberExpression,
-                    member: expr,
-                    expr: this.parseInitialiser()
-                };
-            }
-            console.log(this.token, 'at MemberExpression');
-            throw 'Unexpected token ILLEGAL';
-        }
-        
-        if (this.match('(')) {
-            return {
-                callee: expr,
-                arguments: this.parseArguments()
-            };
-        }
-        
-        return expr;
-    }
-    
-    
-    
-    // not implement
-    // FunctionExpression
-    
-    if (this.match('new')) {
+    if (this.match('[')) {
         this.consume();
-        return {
-            type: Syntax.NewExpression,
-            callee: this.parseMemberExpression(),
-            arguments: this.parseArguments()
+        
+        var object = {
+            type: Syntax.MemberExpression,
+            object: this.parseExpression(),
+            syntax: 'bracket'
         };
+        
+        this.expect(']');
+        
+        if (this.match('[') || this.match('.') || this.match('(')) {
+            object.member = this.parseMemberExpression();
+        }
+        
+        return object;
     }
     
-    console.log(this.token, 'at MemberExpression');
-    throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    if (this.match('.')) {
+        this.consume();
+        
+        var object = {
+            type: Syntax.MemberExpression,
+            object: this.parseIdentifier(),
+            syntax: 'dot'
+        };
+        
+        if (this.match('[') || this.match('.') || this.match('(')) {
+            object.member = this.parseMemberExpression();
+        }
+        
+        return object;
+    }
+    
+    if (this.match('(')) {
+        
+        var object = {
+            type: Syntax.MemberExpression,
+            callee: null,
+            arguments: this.parseArguments(),
+            syntax: 'parenthesis'
+        };
+        
+        if (this.match('[') || this.match('.') || this.match('(')) {
+            object.member = this.parseMemberExpression();
+        }
+        
+        return object;
+    }
 }
 
 /*
-    NewExpression:
+    11.2.2 The new Operator
+    
+    NewExpression :
         MemberExpression
         new NewExpression
 */
@@ -1184,35 +1291,105 @@ Parser.prototype.parseNewExpression = function() {
         };
     }
     
-    var expr = this.parseMemberExpression();
-    if (expr) {
-        return expr;
-    }
-    
-    console.log(this.token, 'at NewExpression');
-    throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
+    return this.parseLeftHandSideExpressions();
 }
 
 /*
-    CallExpression:
+    11.2.3 Function Calls
+    
+    CallExpression :
         MemberExpression Arguments
         CallExpression Arguments
         CallExpression [ Expression ]
         CallExpression . Identifier
 */
+/*
 Parser.prototype.parseCallExpression = function() {
     
-    console.log(this.token, 'at CallExpression')
-    throw 'SyntaxError: Unexpected token \'' + this.token.text + '\'';
-    
-    return {
-        type: Syntax.CallExpression,
-        callee: this.parseMemberExpression(),
-        arguments: this.parseArguments()
+    if (this.match('[')) {
+        return {
+            type: Syntax.CallExpression,
+            object: expr,
+            member: this.parseCallMember(),
+        };
     }
+    
+    if (this.match('.')) {
+        return {
+            type: Syntax.CallExpression,
+            object: expr,
+            member: this.parseCallMember(),
+        };
+    }
+    
+    if (this.match('(')) {
+        return {
+            type: Syntax.CallExpression,
+            callee: expr,
+            arguments: this.parseArguments()
+        };
+    }
+    
+    return expr;
 }
 
+Parser.prototype.parseCallMember = function() {
+    
+    if (this.match('[')) {
+        this.consume();
+        
+        var object = {
+            type: Syntax.CallExpression,
+            object: this.parseExpression(),
+            syntax: 'bracket'
+        };
+        
+        this.expect(']');
+        
+        if (this.match('[') || this.match('.') || this.match('(')) {
+            object.member = this.parseCallMember();
+        }
+        
+        return object;
+    }
+    
+    if (this.match('.')) {
+        this.consume();
+        
+        var object = {
+            type: Syntax.CallExpression,
+            object: this.parseExpression(),
+            syntax: 'dot'
+        };
+        
+        if (this.match('[') || this.match('.') || this.match('(')) {
+            object.member = this.parseCallMember();
+        }
+        
+        return object;
+    }
+    
+    if (this.match('(')) {
+        
+        var object = {
+            type: Syntax.CallExpression,
+            callee: null,
+            arguments: this.parseArguments(),
+            syntax: 'parenthesis'
+        };
+        
+        if (this.match('[') || this.match('.') || this.match('(')) {
+            object.member = this.parseCallMember();
+        }
+        
+        return object;
+    }
+}
+*/
+
 /*
+    11.2.4 Argument Lists
+    
     Arguments:
         ( )
         ( ArgumentList )
@@ -1228,6 +1405,8 @@ Parser.prototype.parseArguments = function() {
 }
 
 /*
+    11.2.4 Argument Lists
+    
     ArgumentList:
         AssignmentExpression
         ArgumentList , AssignmentExpression
@@ -1237,34 +1416,75 @@ Parser.prototype.parseArgumentList = function() {
     var arguments = [];
     
     while (!this.match(')')) {
-        arguments.push(this.parseAssignmentExpression());
-        if (!this.match(')')) {
-            this.expect(',');
+        
+        if (this.matchKind(Token.NEWLINE)
+         || this.matchKind(Token.EOF)) {
+             throw new Message(this.token, Message.IllegalArgumentList).toString();
         }
+        
+        arguments.push(this.parseAssignmentExpression());
+        if (this.match(')')) break;
+        
+        this.expect(',');
     }
+    
     return arguments;
 }
 
 /*
-    LeftHandSideExpression:
-        NewExpression
-        CallExpression
+    11.2.5 Function Expressions
+    
+    FunctionExpression :
+        function Identifieropt ( FormalParameterListopt ) { FunctionBody }
+         |
+         v
+        ( expression ): ReturnStatement
 */
-Parser.prototype.parseLeftHandSideExpression = function() {
+Parser.prototype.parseFunctionExpression = function() {
     
-    var expr = this.parseNewExpression();
-    if (expr) {
-        return expr;
-    }
-    
-    var expr = this.parseCallExpression();
-    if (expr) {
-        return expr;
+    // lambda expression
+    // (2): x * x
+    if (this.match('(')) {
+        
+        var k = 1;
+        while (this.lookahead(k++).text === ')') {
+            if (this.lookahead(k).kind === Token.NEWLINE
+             || this.lookahead(k).kind === Token.EOF) break;
+        }
+        
+        if (this.lookahead(++k).text === ':') {
+            var params = this.parseFormalParameterList();
+            this.expect(':');
+            
+            this.inFunction = true;
+            var body = this.parseExpression();
+            this.inFunction = false;
+            
+            return {
+                type: Syntax.FunctionExpression,
+                id: null,
+                params: params,
+                body: body
+            };
+        }
     }
 }
 
 /*
-    PostfixExpression:
+    11.2 Left-Hand-Side Expressions
+    
+    LeftHandSideExpression :
+        NewExpression
+        CallExpression
+*/
+Parser.prototype.parseLeftHandSideExpression = function() {
+    return this.parseNewExpression();// || this.parseCallExpression();
+}
+
+/*
+    11.3 Postfix Expressions
+    
+    PostfixExpression :
         LeftHandSideExpression
         LeftHandSideExpression [LineTerminator 無し] ++
         LeftHandSideExpression [LineTerminator 無し] --
@@ -1278,8 +1498,11 @@ Parser.prototype.parsePostfixExpression = function() {
         var token = this.token;
         this.consume();
         
-        // not implemented
-        // [LineTerminator 無し]
+        if (expr.type === Syntax.ObjectExpression
+         || expr.type === Syntax.ArrayExpression) {
+            if (token.text === '++') throw new Message(this.token, Message.IllegalPostfixIncrement).toString();
+            if (token.text === '--') throw new Message(this.token, Message.IllegalPostfixDecrement).toString();
+        }
         
         return {
             type: Syntax.PostfixExpression,
@@ -1292,6 +1515,8 @@ Parser.prototype.parsePostfixExpression = function() {
 }
 
 /*
+    11.4 Unary Operators
+    
     UnaryExpression:
         delete UnaryExpression
         void UnaryExpression
@@ -1307,7 +1532,8 @@ Parser.prototype.parsePostfixExpression = function() {
 */
 Parser.prototype.parseUnaryExpression = function() {
     
-    if (/*this.match('typeof') || this.match('void') || */this.match('delete')) {
+    // 11.4.1 - 11.4.3
+    if (/*this.match('typeof') || */this.match('void') || this.match('delete')) {
         var token = this.token;
         this.consume();
         var expr = this.parseUnaryExpression();
@@ -1318,21 +1544,32 @@ Parser.prototype.parseUnaryExpression = function() {
         };
     }
     
-    // prefix increment operator
+    // 11.4.4 - 11.4.5
     if (this.match('++') || this.match('--')) {
         var token = this.token;
         this.consume();
+        
+        var expr = this.parseUnaryExpression();
+        if (expr.type === Syntax.ObjectExpression
+         || expr.type === Syntax.ArrayExpression) {
+            if (token.text === '++') throw new Message(this.token, Message.IllegalPrefixIncrement).toString();
+            if (token.text === '--') throw new Message(this.token, Message.IllegalPrefixDecrement).toString();
+        }
+        
         return {
             type: Syntax.PrefixExpression,
-            expr: this.parseUnaryExpression(),
+            expr: expr,
             operator: token.text
         };
     }
     
+    // 11.4.6 - 11.4.9
     if (this.match('+') || this.match('-') || this.match('~') || this.match('!')) {
         var token = this.token;
         this.consume();
         var expr = this.parseUnaryExpression();
+        // may have to handle exception here
+        // example, {} + {}, {} - {}
         return {
             type: Syntax.UnaryExpression,
             expr: expr,
@@ -1340,6 +1577,7 @@ Parser.prototype.parseUnaryExpression = function() {
         };
     }
     
+    // 11.4.9
     if (this.match('not')) {
         var token = this.token;
         this.consume();
@@ -1355,7 +1593,9 @@ Parser.prototype.parseUnaryExpression = function() {
 }
 
 /*
-    MultiplicativeExpression:
+    11.5 Multiplicative Operators
+    
+    MultiplicativeExpression :
         UnaryExpression
         MultiplicativeExpression * UnaryExpression
         MultiplicativeExpression / UnaryExpression
@@ -1365,9 +1605,16 @@ Parser.prototype.parseMultiplicativeExpression = function() {
     
     var expr = this.parseUnaryExpression();
     
+    // 11.5.1 - 11.5.3
     if (this.match('/') || this.match('*') || this.match('%')) {
         var token = this.token;
         this.consume();
+        
+        if (expr.type === Syntax.ObjectExpression
+         || expr.type === Syntax.ArrayExpression) {
+            throw new Message(this.token, Message.IllegalMultiplicativeExpression).toString();
+        }
+        
         return {
             type: Syntax.MultiplicativeExpression,
             operator: token.text,
@@ -1380,7 +1627,9 @@ Parser.prototype.parseMultiplicativeExpression = function() {
 }
 
 /*
-    AdditiveExpression:
+    11.6 Additive Operators
+    
+    AdditiveExpression :
         MultiplicativeExpression
         AdditiveExpression + MultiplicativeExpression
         AdditiveExpression - MultiplicativeExpression
@@ -1389,6 +1638,7 @@ Parser.prototype.parseAdditiveExpression = function() {
     
     var expr = this.parseMultiplicativeExpression();
     
+    // 11.6.1 - 11.6.2
     if (this.match('+') || this.match('-')) {
         var token = this.token;
         this.consume();
@@ -1404,7 +1654,9 @@ Parser.prototype.parseAdditiveExpression = function() {
 }
 
 /*
-    ShiftExpression:
+    11.7 Bitwise Shift Operators
+    
+    ShiftExpression :
         AdditiveExpression
         ShiftExpression << AdditiveExpression
         ShiftExpression >> AdditiveExpression
@@ -1417,6 +1669,13 @@ Parser.prototype.parseShiftExpression = function() {
     if (this.match('<<') || this.match('>>')) {
         var token = this.token;
         this.consume();
+        
+        /*
+        if (expr.type === Syntax.ObjectExpression
+         || expr.type === Syntax.ArrayExpression) {
+            throw new Message(this.token, Message.IllegalShiftExpression).toString();
+        }*/
+        
         return {
             type: Syntax.ShiftExpression,
             operator: token.text,
@@ -1428,6 +1687,13 @@ Parser.prototype.parseShiftExpression = function() {
     if (this.match('>>>')) {
         var token = this.token;
         this.consume();
+        
+        /*
+        if (expr.type === Syntax.ObjectExpression
+         || expr.type === Syntax.ArrayExpression) {
+            throw new Message(this.token, Message.IllegalShiftExpression).toString();
+        }*/
+        
         return {
             type: Syntax.ShiftExpression,
             operator: token.text,
@@ -1440,7 +1706,9 @@ Parser.prototype.parseShiftExpression = function() {
 }
 
 /*
-    RelationalExpression:
+    11.8 Relational Operators
+    
+    RelationalExpression :
         ShiftExpression
         RelationalExpression < ShiftExpression
         RelationalExpression > ShiftExpression
@@ -1453,9 +1721,17 @@ Parser.prototype.parseRelationalExpression = function() {
     
     var expr = this.parseShiftExpression();
     
+    // 11.8.1 - 11.8.2
     if (this.match('<') || this.match('>')) {
         var token = this.token;
         this.consume();
+        
+        /*
+        if (expr.type === Syntax.ObjectExpression
+         || expr.type === Syntax.ArrayExpression) {
+            throw new Message(this.token, Message.IllegalRelationalExpression).toString();
+        }*/
+        
         return {
             type: Syntax.RelationalExpression,
             operator: token.text,
@@ -1464,9 +1740,17 @@ Parser.prototype.parseRelationalExpression = function() {
         };
     }
     
+    // 11.8.3 - 11.8.4
     if (this.match('<=') || this.match('>=')) {
         var token = this.token;
         this.consume();
+        
+        /*
+        if (expr.type === Syntax.ObjectExpression
+         || expr.type === Syntax.ArrayExpression) {
+            throw new Message(this.token, Message.IllegalRelationalExpression).toString();
+        }*/
+        
         return {
             type: Syntax.RelationalExpression,
             operator: token.text,
@@ -1487,6 +1771,7 @@ Parser.prototype.parseRelationalExpression = function() {
     }
     */
     
+    // 11.8.7
     if (this.match('in')) {
         var token = this.token;
         this.consume();
@@ -1502,7 +1787,9 @@ Parser.prototype.parseRelationalExpression = function() {
 }
 
 /*
-    EqualityExpression:
+    11.9 Equality Operators
+    
+    EqualityExpression :
         RelationalExpression
         EqualityExpression == RelationalExpression
         EqualityExpression != RelationalExpression
@@ -1513,6 +1800,7 @@ Parser.prototype.parseEqualityExpression = function() {
     
     var expr = this.parseRelationalExpression();
     
+    // 11.9.1 - 11.9.2
     if (this.match('==') || this.match('!=')) {
         var token = this.token;
         this.consume();
@@ -1524,6 +1812,7 @@ Parser.prototype.parseEqualityExpression = function() {
         };
     }
     
+    // 11.9.4 - 11.9.5
     if (this.match('===') || this.match('!==')) {
         var token = this.token;
         this.consume();
@@ -1539,11 +1828,14 @@ Parser.prototype.parseEqualityExpression = function() {
 }
 
 /*
-    EqualityExpression:
+    11.10 Binary Bitwise Operators
+    
+    EqualityExpression :
         BitwiseANDExpression & EqualityExpression
 */
 Parser.prototype.parseBitwiseANDExpression = function() {
     
+    var token = this.token;
     var expr = this.parseEqualityExpression();
     
     if (this.match('&')) {
@@ -1561,7 +1853,9 @@ Parser.prototype.parseBitwiseANDExpression = function() {
 }
 
 /*
-    BitwiseXORExpression:
+    11.11 Binary Logical Operators
+    
+    BitwiseXORExpression :
         BitwiseANDExpression
         BitwiseXORExpression ^ BitwiseANDExpression
 */
@@ -1584,7 +1878,9 @@ Parser.prototype.parseBitwiseXORExpression = function() {
 }
 
 /*
-    BitwiseORExpression:
+    11.11 Binary Logical Operators
+    
+    BitwiseORExpression :
         BitwiseXORExpression
         BitwiseORExpression | BitwiseXORExpression
 */
@@ -1607,7 +1903,9 @@ Parser.prototype.parseBitwiseORExpression = function() {
 }
 
 /*
-    LogicalANDExpression:
+    11.11 Binary Logical Operators
+    
+    LogicalANDExpression :
         BitwiseORExpression
         LogicalANDExpression && BitwiseORExpression
 */
@@ -1629,7 +1927,9 @@ Parser.prototype.parseLogicalANDExpression = function() {
 }
 
 /*
-    LogicalORExpression:
+    11.11 Binary Logical Operators
+    
+    LogicalORExpression :
         LogicalANDExpression
         LogicalORExpression || LogicalANDExpression
 */
@@ -1652,7 +1952,9 @@ Parser.prototype.parseLogicalORExpression = function() {
 }
 
 /*
-    ConditionalExpression:
+    11.11 Binary Logical Operators
+    
+    ConditionalExpression :
         LogicalORExpression
         LogicalORExpression ? AssignmentExpression : AssignmentExpression
 */
@@ -1676,6 +1978,8 @@ Parser.prototype.parseConditionalExpression = function() {
 }
 
 /*
+    11.13 Assignment Operators
+    
     AssignmentExpression:
         ConditionalExpression
         LeftHandSideExpression AssignmentOperator AssignmentExpression
@@ -1685,7 +1989,8 @@ Parser.prototype.parseAssignmentExpression = function() {
     var expr = this.parseConditionalExpression();
     
     // AssignmentOperator
-    if (assign = this.matchAssign()) {
+    if (this.matchAssign(this.token.text)) {
+        var assign = this.token.text;
         this.consume();
         
         // not implement
@@ -1703,49 +2008,125 @@ Parser.prototype.parseAssignmentExpression = function() {
     return expr;
 }
 
-Parser.prototype.parseComment = function() {
+/*
+    11.14 Comma Operator ( , )
     
-    // single line comment
-    if (this.token.kind === Token.SINGLE_LINE_COMMENT) {
-        var token = this.token;
-        this.consume();
-        return {
-            type: Syntax.SingleLineComment,
-            value: token.text
+    Expressions
+    	AssignmentExpression
+        Expression , AssignmentExpression
+*/
+Parser.prototype.parseExpression = function() {
+    
+    var expr = this.parseAssignmentExpression();
+    
+    if (this.match(',')) {
+        expr = {
+            type: Syntax.SequenceExpression,
+            expressions: [expr]
+        };
+
+        while (1) {
+            if (!this.match(',')) {
+                break;
+            }
+            this.consume();
+            expr.expressions.push(this.parseAssignmentExpression());
         }
     }
     
+    return expr;
+}
+
+/*
+    7.4 Comments
+*/
+Parser.prototype.parseComment = function() {
+    
     // multi line comment
-    if (this.token.kind === Token.MULTI_LINE_COMMENT) {
+    if (this.token.multiple) {
         var token = this.token;
         this.consume();
         return {
-            type: Syntax.MultiLineComment,
-            value: token.text
+            type: Syntax.Comment,
+            value: token.text,
+            multiple: true
+        }
+    }
+    // single line comment
+    else {
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.Comment,
+            value: token.text,
+            multiple: false
         }
     }
 }
 
-Parser.prototype.parseFunctionExpression = function() {
+
+
+
+/*
+    13 Function Definition
     
-    // not implement
+    FunctionDeclaration :
+        function Identifier ( FormalParameterListopt ) { FunctionBody }
+*/
+Parser.prototype.parseFunctionDeclaration = function() {
+    this.expect('def');
+    var id = this.parseIdentifier();
+    var params = this.parseFormalParameterList();
+    this.inFunction = true;
+    var body = this.parseFunctionBody();
+    this.inFunction = false;
+    return {
+        type: Syntax.FunctionDeclaration,
+        id: id,
+        params: params,
+        body: body
+    };
 }
+
+/*
+    13 Function Definition
+    
+    FormalParameterList :
+        Identifier
+        FormalParameterList , Identifier
+*/
+Parser.prototype.parseFormalParameterList = function() {
+    
+    this.expect('(');
+    
+    var params = [];
+    while (!this.match(')')) {
+        if (this.match(',')) {
+            this.consume();
+        }
+        params.push(this.parseInitialiser());
+    }
+    
+    this.expect(')');
+    return params;
+}
+
+/*
+    13 Function Definition
+    
+    FunctionBody :
+        SourceElements
+*/
+Parser.prototype.parseFunctionBody = function() {
+    return this.parseBlock();
+}
+
 // src/syntax.js
 var Syntax = [];
-Syntax.NoneLiteral = 'NoneLiteral';
-Syntax.BooleanLiteral = 'BooleanLiteral';
-Syntax.NumericLiteral = 'NumericLiteral';
-Syntax.ArrayLiteral = 'ArrayLiteral';
-Syntax.ObjectLiteral = 'ObjectLiteral';
-Syntax.Property = 'Property';
-Syntax.Grouping = 'Grouping';
-Syntax.StringLiteral = 'StringLiteral';
-Syntax.This = 'This';
-Syntax.MemberExpression = 'MemberExpression';
-Syntax.Identifier = 'Identifier';
+Syntax.BlockStatement = 'BlockStatement';
 Syntax.IfStatement = 'IfStatement';
 Syntax.WhileStatement = 'WhileStatement';
-Syntax.ForInStatement = 'ForInStatement';
+Syntax.ForStatement = 'ForStatement';
 Syntax.ContinueStatement = 'ContinueStatement';
 Syntax.BreakStatement = 'BreakStatement';
 Syntax.ReturnStatement = 'ReturnStatement';
@@ -1753,18 +2134,24 @@ Syntax.RaiseStatement = 'RaiseStatement';
 Syntax.TryStatement = 'TryStatement';
 Syntax.ExceptStatement = 'ExceptStatement';
 Syntax.FinallyStatement = 'FinallyStatement';
-Syntax.SingleLineComment = 'SingleLineComment';
-Syntax.MultiLineComment = 'MultiLineComment';
+Syntax.ThisExpression = 'ThisExpression';
+Syntax.NoneLiteral = 'NoneLiteral';
+Syntax.BooleanLiteral = 'BooleanLiteral';
+Syntax.NumericLiteral = 'NumericLiteral';
+Syntax.StringLiteral = 'StringLiteral';
+Syntax.ArrayExpression = 'ArrayExpression';
+Syntax.ObjectExpression = 'ObjectExpression';
+Syntax.Property = 'Property';
+Syntax.Identifier = 'Identifier';
+Syntax.GroupingExpression = 'GroupingExpression';
+Syntax.MemberExpression = 'MemberExpression';
+Syntax.CallExpression = 'CallExpression';
+Syntax.Comment = 'Comment';
 Syntax.SequenceExpression = 'SequenceExpression';
 Syntax.EqualityExpression = 'EqualityExpression';
-Syntax.RelationalExpression = 'RelationalExpression';
 Syntax.BinaryExpression = 'BinaryExpression';
 Syntax.LogicalExpression = 'LogicalExpression';
 Syntax.ConditionalExpression = 'ConditionalExpression';
-Syntax.Period = 'Period';
-Syntax.NEWLINE = 'NEWLINE';
-// Syntax.NaNLiteral = 'NaNLiteral';
-// Syntax.InfinityLiteral = 'InfinityLiteral';
 Syntax.NewExpression = 'NewExpression';
 Syntax.PostfixExpression = 'PostfixExpression';
 Syntax.PrefixExpression = 'PrefixExpression';
@@ -1773,13 +2160,15 @@ Syntax.AdditiveExpression = 'AdditiveExpression';
 Syntax.MultiplicativeExpression = 'MultiplicativeExpression';
 Syntax.ShiftExpression = 'ShiftExpression';
 Syntax.RelationalExpression = 'RelationalExpression';
-
-
 Syntax.EqualityOperator =  'EqualityOperator';
 Syntax.BitwiseBitwiseOperator = 'BitwiseBitwiseOperator';
 Syntax.BinaryLogicalOperator = 'BinaryLogicalOperator';
 Syntax.ConditionalOperator = 'ConditionalOperator';
 Syntax.AssignmentOperator = 'AssignmentOperator';
+Syntax.FunctionDeclaration = 'FunctionDeclaration';
+Syntax.NEWLINE = 'NewLine';
+// Syntax.NaNLiteral = 'NaNLiteral';
+// Syntax.InfinityLiteral = 'InfinityLiteral';
 // src/token.js
 var Token = function(kind, text, location) {
     this.kind = kind;
@@ -1788,13 +2177,18 @@ var Token = function(kind, text, location) {
 }
 
 Token.prototype.toString = function() {
-    return this.location.toString() + ' kind:' + this.kind + ' text:' + this.text;
+    var data = {
+        "location": this.location.toString(), 
+        "kind": this.kind, 
+        "message": this.text
+    };
+    return "{location} kind:{kind} text:{message}".format(data);
 }
 
-//----------------------------------------
-// TOKEN LIST
-//----------------------------------------
-Token.EOF = 'EOF';
+/*
+    Tokens
+*/
+Token.EOF = '<END>';
 Token.NEWLINE = 'NEWLINE';
 Token.INDENT = 'INDENT';
 Token.IDENTIFIER = 'IDENTIFIER';
@@ -1804,53 +2198,72 @@ Token.STRING = 'STRING';
 Token.OPERATOR = 'OPERATOR';
 Token.ASSIGN = 'ASSIGN';
 Token.COLON = 'COLON';
-Token.SINGLE_LINE_COMMENT = 'SINGLE_LINE_COMMENT';
-Token.MULTI_LINE_COMMENT = 'MULTI_LINE_COMMENT';
-
-//----------------------------------------
-// KEYWORD LIST
-//----------------------------------------
-Token.KEYWORDS = [];
-Token.KEYWORDS.TYPEOF = 'TYPEOF';
-Token.KEYWORDS.INSTANCEOF = 'INSTANCEOF';
-Token.KEYWORDS.DELETE = 'DELETE';
-Token.KEYWORDS.NEW = 'NEW';
-Token.KEYWORDS.TRY = 'TRY';
-Token.KEYWORDS.CATCH = 'CATCH';
-Token.KEYWORDS.RAISE = 'RAISE';
-Token.KEYWORDS.EXTENDS = 'EXTENDS';
-Token.KEYWORDS.AND = 'AND';
-Token.KEYWORDS.OR = 'OR';
-Token.KEYWORDS.XOR = 'XOR';
-Token.KEYWORDS.IN = 'IN';
-Token.KEYWORDS.IS = 'IS';
-Token.KEYWORDS.NOT = 'NOT';
-Token.KEYWORDS.RETURN = 'RETURN';
-Token.KEYWORDS.IF = 'IF';
-Token.KEYWORDS.ELIF = 'ELIF';
-Token.KEYWORDS.ELSE = 'ELSE';
-Token.KEYWORDS.WHILE = 'WHILE';
-Token.KEYWORDS.FOR = 'FOR';
-Token.KEYWORDS.CONTINUE = 'CONTINUE';
-Token.KEYWORDS.BREAK = 'BREAK';
-Token.KEYWORDS.CLASS = 'CLASS';
-//Token.KEYWORDS.NULL = 'NULL';
-Token.KEYWORDS.THIS = 'THIS';
-Token.KEYWORDS.TRUE = 'TRUE';
-Token.KEYWORDS.FALSE = 'FALSE';
-
-
-Token.NONE = 'NONE';
-Token.NAN = 'NAN';
+Token.COMMENT = 'COMMENT';
 Token.BOOLEAN = 'BOOLEAN';
-Token.INFINITY = 'INFINITY';
+
+/*
+    Keywords
+*/
+Token.KEYWORDS = [];
+Token.KEYWORDS.AND = 'and';
+Token.KEYWORDS.BREAK = 'break';
+Token.KEYWORDS.CATCH = 'catch';
+Token.KEYWORDS.CLASS = 'class';
+Token.KEYWORDS.CONTINUE = 'continue';
+Token.KEYWORDS.DELETE = 'delete';
+Token.KEYWORDS.ELSE = 'else';
+Token.KEYWORDS.DEF = 'def';
+Token.KEYWORDS.FINALLY = 'finally';
+Token.KEYWORDS.FOR = 'for';
+Token.KEYWORDS.IF = 'if';
+Token.KEYWORDS.IN = 'in';
+Token.KEYWORDS.IS = 'is';
+Token.KEYWORDS.NEW = 'new';
+Token.KEYWORDS.NOT = 'not';
+Token.KEYWORDS.OR = 'or';
+Token.KEYWORDS.RETURN = 'return';
+Token.KEYWORDS.THIS = 'this';
+Token.KEYWORDS.TRY = 'try';
+Token.KEYWORDS.RAISE = 'raise';
+Token.KEYWORDS.VOID = 'void';
+Token.KEYWORDS.WHILE = 'while';
+Token.KEYWORDS.XOR = 'xor';
+Token.KEYWORDS.NONE = 'none';
 // src/tokenizer.js
 var Tokenizer = function(source) {
     this.line = 1;
-    Lexer.call(this, source);
+    this.source = source || '';
+    this.p = 0;
+    this.column = 1;
+    this.indent = 0;
+    this.indent_size = 4;
+    this.c = this.source[this.p];
+    Lexer.call(this);
 }
 
 Tokenizer.prototype = new Lexer();
+Tokenizer.prototype.consume = function() {
+    if (this.c == '\n' || this.c == '\r') {
+        this.column = 1;
+    } else {
+        this.column++;
+    }
+    this.p++;
+    if (this.p < this.source.length) {
+        this.c = this.source[this.p];
+    } else {
+        this.c = Token.EOF;
+    }
+}
+
+Tokenizer.prototype.lookahead = function(k) {
+    if (this.p + k < this.source.length) {
+        return this.source[this.p + k];
+    } else {
+        return Token.EOF;
+    }
+}
+
 Tokenizer.prototype.tokenize = function() {
     
     this.line = 1;
@@ -1863,6 +2276,11 @@ Tokenizer.prototype.tokenize = function() {
     while (this.p < this.source.length) {
         
         var token;
+        
+        if (token = this.scanComment()) {
+            tokens.push(token);
+            continue;
+        }
         
         if (this.c == '\n' || this.c == '\r') {
             if (token = this.scanLineTerminator()) {
@@ -1886,30 +2304,25 @@ Tokenizer.prototype.tokenize = function() {
             continue;
         }
         
+        if (token = this.scanReservedWord()) {
+            tokens.push(token);
+            continue;
+        }
+        
         if (this.isLetter(this.c)) {
             if (token = this.scanIdent()) {
-                // don't replace token.kind with keyword when giving text is `true` or `false`.
-                if (token.text.toUpperCase() == Token.KEYWORDS.TRUE
-                 || token.text.toUpperCase() == Token.KEYWORDS.FALSE) {
-                     tokens.push(token);
-                     continue;
-                }
-                if (Token.KEYWORDS[token.text.toUpperCase()]) {
-                    token.kind = token.text.toUpperCase();
-                }
                 tokens.push(token);
                 continue;
             }
         }
         
         if (this.isDigit(this.c)) {
-            
             if (this.isLetter(this.lookahead(1)) && this.lookahead(1) !== 'EOF') {
                 var ss = this.c;
                 this.consume();
-                var token = this.scanIdent();
-                var ss = ss + token.text;
-                throw 'Line ' + this.line + ': Unknown token \'' + ss + '\', asserted by tokenizer';
+                var ident = this.scanIdent();
+                var token = new Token('', ss + ident.text, new Location(this.line, this.column));
+                throw new Message(token, Message.IllegalIdent).toString();
             }
             if (token = this.scanDigit()) {
                 tokens.push(token);
@@ -1917,7 +2330,7 @@ Tokenizer.prototype.tokenize = function() {
             }
         }
         
-        if (this.c === '\'' || this.c == '"') {
+        if (this.c === "'" || this.c == '"') {
             if (token = this.scanString(this.c)) {
                 tokens.push(token);
                 continue;
@@ -1929,33 +2342,32 @@ Tokenizer.prototype.tokenize = function() {
             continue;
         }
         
-        if (token = this.scanAssign()) {
-            tokens.push(token);
-            continue;
-        }
-        
-        if (token = this.scanOperator()) {
-            tokens.push(token);
-            continue;
-        }
-        
-        if (token = this.scanComment()) {
-            tokens.push(token);
-            continue;
-        }
-        
         if (token = this.scanRegularExpression()) {
             tokens.push(token);
             continue;
         }
         
-        throw 'line ' + this.line + ': Unknown token \'' + this.c + '\', asserted by tokenizer';
+        var token = new Token('', this.c, new Location(this.line, this.column));
+        throw new Message(token, Message.UnknownToken).toString();
         this.consume();
     }
     
     tokens.push(new Token(Token.EOF, '', new Location(this.line, this.column)));
     
     return tokens;
+}
+
+Tokenizer.prototype.scanIndent = function() {
+    
+    this.indent = 0;
+    
+    while (this.p < this.source.length) {
+        if (this.c == ' ') this.indent++;
+        else if (this.c == '\t') this.indent += this.indent_size;
+        else break;
+        this.consume();
+    }
+    return new Token(Token.INDENT, this.indent, new Location(this.line, this.column));
 }
 
 Tokenizer.prototype.scanLineTerminator = function() {
@@ -1969,23 +2381,71 @@ Tokenizer.prototype.scanLineTerminator = function() {
         this.consume();
     }
     
-    return new Token(Token.NEWLINE, c, new Location(this.line, this.column));
+    // If column is zero, set indent size as column.
+    return new Token(Token.NEWLINE, c, new Location(this.line, this.column || (this.indent + 1)));
 }
 
-Tokenizer.prototype.scanIndent = function() {
+/*
+    7.4 Comments
     
-    var size = 0;
+    http://www2u.biglobe.ne.jp/~oz-07ams/prog/ecma262r3/7_Lexical_Conventions.html#Comment
+*/
+Tokenizer.prototype.scanComment = function() {
     
-    while (this.p < this.source.length) {
-        if (this.c == ' ' || this.c == '\t') size++;
-        else break;
+    var sign = this.c;
+    if (sign === '#') {
         this.consume();
+        var comment = '';
+        while (!(this.c === Token.EOF || this.isLineTerminator(this.c))) {
+            comment += this.c;
+            this.consume();
+        }
+        var token = new Token(Token.COMMENT, comment, new Location(this.line, this.column));
+        token.multiple = false;
+        return token
     }
     
-    return new Token(Token.INDENT, size, new Location(this.line, this.column));
+    var sign = this.c + this.lookahead(1);
+    if (sign == '/*') {
+        this.consume();
+        this.consume();
+        var comment = '';
+        while (this.c + this.lookahead(1) != '*/') {
+            if (this.c === Token.EOF) {
+                var token = new Token('', this.c, new Location(this.line, this.column || 1));
+                throw new Message(token, Message.IllegalComment).toString();
+            }
+            comment += this.c;
+            this.consume();
+        }
+        this.consume();
+        this.consume();
+        var token = new Token(Token.COMMENT, comment, new Location(this.line, this.column));
+        token.multiple = true;
+        return token
+    }
 }
 
-Tokenizer.prototype.scanIdent = function() {
+/*
+    7.5.1 Reserved Words
+    
+    ReservedWord ::
+        Keyword
+        FutureReservedWord
+        NullLiteral
+        BooleanLiteral
+*/
+Tokenizer.prototype.scanReservedWord = function() {
+    
+    var token = this.scanKeyword();
+    if (token) {
+        return token;
+    }
+    
+    var token = this.scanFutureReservedWord();
+    if (token) {
+        return token;
+    }
     
     var ident = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3);
     if (ident === 'None') {
@@ -1993,7 +2453,7 @@ Tokenizer.prototype.scanIdent = function() {
         this.consume();
         this.consume();
         this.consume();
-        return new Token(Token.NONE, ident, new Location(this.line, this.column));
+        return new Token(Token.KEYWORDS.NONE, ident, new Location(this.line, this.column));
     }
     
     var ident = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3);
@@ -2014,25 +2474,75 @@ Tokenizer.prototype.scanIdent = function() {
         this.consume();
         return new Token(Token.BOOLEAN, ident, new Location(this.line, this.column));
     }
+}
+
+/*
+    7.5.2 Keywords
     
-    var ident = this.c + this.lookahead(1) + this.lookahead(2);
-    if (ident === 'NaN') {
-        this.consume();
-        this.consume();
-        this.consume();
-        return new Token(Token.NAN, ident, new Location(this.line, this.column));
+    Keyword :: one of
+        and
+        break
+        catch
+        class
+        continue
+        delete
+        def
+        else
+        finally
+        for
+        if
+        in
+        is
+        new
+        not
+        or
+        return
+        this
+        try
+        raise
+        void
+        while
+        xor
+*/
+Tokenizer.prototype.scanKeyword = function() {
+    
+    var keyword = '';
+    var p = this.p;
+    var c = this.source[this.p];
+    
+    while (this.c !== Token.EOF) {
+        if (this.isLetter(c) || this.isDigit(c)) {
+            keyword += c;
+            c = this.source[++p];
+            continue;
+        }
+        break;
     }
     
-    var ident = this.c
-        + this.lookahead(1) + this.lookahead(2) + this.lookahead(3)
-        + this.lookahead(4) + this.lookahead(5) + this.lookahead(6)
-        + this.lookahead(7);
-    if (ident === 'Infinity') {
-        this.consume(); this.consume(); this.consume();
-        this.consume(); this.consume(); this.consume();
-        this.consume(); this.consume();
-        return new Token(Token.INFINITY, ident, new Location(this.line, this.column));
+    if (Token.KEYWORDS[keyword.toUpperCase()]) {
+        var text = Token.KEYWORDS[keyword.toUpperCase()];
+        var i = 0;
+        while (i < text.length) {
+            this.consume();
+            i++;
+        }
+        return new Token(text, keyword, new Location(this.line, this.column));
     }
+}
+
+/*
+    7.5.3 Future Reserved Words
+    
+    FutureReservedWord :: one of
+*/
+Tokenizer.prototype.scanFutureReservedWord = function() {
+    
+}
+
+/*
+    7.6 Identifier
+*/
+Tokenizer.prototype.scanIdent = function() {
     
     var ident = '';
     
@@ -2040,50 +2550,23 @@ Tokenizer.prototype.scanIdent = function() {
         if (this.isLetter(this.c) || this.isDigit(this.c)) {
             ident += this.c;
             this.consume();
-        } else {
-            break;
+            continue;
         }
+        break;
     }
     
     return new Token(Token.IDENTIFIER, ident, new Location(this.line, this.column));
 }
 
-Tokenizer.prototype.scanDigit = function() {
+/*
+    7.7 Punctuators
     
-    var digit = '';
+    Punctuator :: one of
+        { } ( ) [ ] . ; , < > <= >= == != === !== 
+        + - * % ++ -- << >> >>> & | ^ ! ~ && || ? 
+        : = += -= *= %= <<= >>= >>>= &= |= ^=
     
-    while (this.c !== Token.EOF) {
-        if (this.isDigit(this.c)) {
-            digit += this.c;
-            this.consume();
-        } else {
-            break;
-        }
-    }
-    
-    return new Token(Token.DIGIT, digit, new Location(this.line, this.column));
-}
-
-Tokenizer.prototype.scanString = function(delimiter) {
-    
-    var ss = '';
-    this.consume();
-    
-    while (1) {
-        if (this.c === Token.EOF || this.isLineTerminator(this.c)) {
-            throw 'Line ' + this.line + ' Column ' + this.column + ': Unexpected token ILLEGAL';
-        }
-        if (this.c === delimiter) {
-            this.consume();
-            break;
-        }
-        ss += this.c;
-        this.consume();
-    }
-    
-    return new Token(Token.STRING, ss, new Location(this.line, this.column));
-}
-
+*/
 Tokenizer.prototype.scanPunctuator = function() {
     
     // 1character punctuator
@@ -2100,6 +2583,16 @@ Tokenizer.prototype.scanPunctuator = function() {
         var c = this.c;
         this.consume();
         return new Token(Token.PUNCTUATOR, c, new Location(this.line, this.column));
+    }
+    
+    var token = this.scanAssign();
+    if (token) {
+        return token;
+    }
+    
+    var token = this.scanOperator();
+    if (token) {
+        return token;
     }
 }
 
@@ -2161,7 +2654,7 @@ Tokenizer.prototype.scanAssign = function() {
     if (op === '*=' || op === '/=' || op === '%=' || 
         op === '+=' || op === '-=' || op === '&=' || 
         op === '^=' || op === '|=' || op === '<=' ||
-        op === '>=') {
+        op === '>=' || op === '==') {
         this.consume();
         this.consume();
         return new Token(Token.PUNCTUATOR, op, new Location(this.line, this.column));
@@ -2175,37 +2668,55 @@ Tokenizer.prototype.scanAssign = function() {
     }
 }
 
-Tokenizer.prototype.scanComment = function() {
+/*
+    7.8.3 Numeric Literals
+*/
+Tokenizer.prototype.scanDigit = function() {
     
-    var sign = this.c;
-    if (sign === '#') {
-        this.consume();
-        var comment = '';
-        while (!(this.c === Token.EOF || this.isLineTerminator(this.c))) {
-            comment += this.c;
+    var digit = '';
+    
+    while (this.c !== Token.EOF) {
+        if (this.isDigit(this.c)) {
+            digit += this.c;
             this.consume();
+        } else {
+            break;
         }
-        return new Token(Token.SINGLE_LINE_COMMENT, comment, new Location(this.line, this.column));
     }
     
-    var sign = this.c + this.lookahead(1);
-    if (sign == '/*') {
-        this.consume();
-        this.consume();
-        var comment = '';
-        while (this.c + this.lookahead(1) != '*/') {
-            if (this.c === Token.EOF) break;
-            comment += this.c;
-            this.consume();
-        }
-        this.consume();
-        this.consume();
-        return new Token(Token.SINGLE_LINE_COMMENT, comment, new Location(this.line, this.column));
-    }
+    return new Token(Token.DIGIT, digit, new Location(this.line, this.column));
 }
 
+/*
+    7.8.4 String Literals
+*/
+Tokenizer.prototype.scanString = function(delimiter) {
+    
+    var ss = '';
+    var location = new Location(this.line, this.column);
+    this.consume();
+    
+    while (1) {
+        if (this.c === Token.EOF || this.isLineTerminator(this.c)) {
+            var token = new Token('', this.c, new Location(this.line, this.column));
+            throw new Message(token, Message.UnexpectedString).toString();
+        }
+        if (this.c === delimiter) {
+            this.consume();
+            break;
+        }
+        ss += this.c;
+        this.consume();
+    }
+    
+    return new Token(Token.STRING, ss, new Location(this.line, this.column));
+}
+
+/*
+    7.8.5 Regular Expression Literals
+*/
 Tokenizer.prototype.scanRegularExpression = function() {
-    // not implemented
+    
 }
 return exports;
 })();

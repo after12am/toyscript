@@ -1,4 +1,5 @@
 var Syntax = [];
+Syntax.BlockStatement = 'BlockStatement';
 Syntax.IfStatement = 'IfStatement';
 Syntax.WhileStatement = 'WhileStatement';
 Syntax.ForStatement = 'ForStatement';
@@ -9,36 +10,24 @@ Syntax.RaiseStatement = 'RaiseStatement';
 Syntax.TryStatement = 'TryStatement';
 Syntax.ExceptStatement = 'ExceptStatement';
 Syntax.FinallyStatement = 'FinallyStatement';
-
-
-
-Syntax.ArrayExpression = 'ArrayExpression';
-Syntax.GroupingExpression = 'GroupingExpression';
-Syntax.ObjectExpression = 'ObjectExpression';
-
+Syntax.ThisExpression = 'ThisExpression';
 Syntax.NoneLiteral = 'NoneLiteral';
 Syntax.BooleanLiteral = 'BooleanLiteral';
 Syntax.NumericLiteral = 'NumericLiteral';
-
-
-Syntax.Property = 'Property';
 Syntax.StringLiteral = 'StringLiteral';
-Syntax.ThisExpression = 'ThisExpression';
-Syntax.MemberExpression = 'MemberExpression';
+Syntax.ArrayExpression = 'ArrayExpression';
+Syntax.ObjectExpression = 'ObjectExpression';
+Syntax.Property = 'Property';
 Syntax.Identifier = 'Identifier';
-
-
+Syntax.GroupingExpression = 'GroupingExpression';
+Syntax.MemberExpression = 'MemberExpression';
+Syntax.CallExpression = 'CallExpression';
 Syntax.Comment = 'Comment';
 Syntax.SequenceExpression = 'SequenceExpression';
 Syntax.EqualityExpression = 'EqualityExpression';
-Syntax.RelationalExpression = 'RelationalExpression';
 Syntax.BinaryExpression = 'BinaryExpression';
 Syntax.LogicalExpression = 'LogicalExpression';
 Syntax.ConditionalExpression = 'ConditionalExpression';
-Syntax.Period = 'Period';
-Syntax.NEWLINE = 'NewLine';
-// Syntax.NaNLiteral = 'NaNLiteral';
-// Syntax.InfinityLiteral = 'InfinityLiteral';
 Syntax.NewExpression = 'NewExpression';
 Syntax.PostfixExpression = 'PostfixExpression';
 Syntax.PrefixExpression = 'PrefixExpression';
@@ -47,12 +36,12 @@ Syntax.AdditiveExpression = 'AdditiveExpression';
 Syntax.MultiplicativeExpression = 'MultiplicativeExpression';
 Syntax.ShiftExpression = 'ShiftExpression';
 Syntax.RelationalExpression = 'RelationalExpression';
-
-
 Syntax.EqualityOperator =  'EqualityOperator';
 Syntax.BitwiseBitwiseOperator = 'BitwiseBitwiseOperator';
 Syntax.BinaryLogicalOperator = 'BinaryLogicalOperator';
 Syntax.ConditionalOperator = 'ConditionalOperator';
 Syntax.AssignmentOperator = 'AssignmentOperator';
-
 Syntax.FunctionDeclaration = 'FunctionDeclaration';
+Syntax.NEWLINE = 'NewLine';
+// Syntax.NaNLiteral = 'NaNLiteral';
+// Syntax.InfinityLiteral = 'InfinityLiteral';

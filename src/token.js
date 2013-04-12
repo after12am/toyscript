@@ -5,13 +5,18 @@ var Token = function(kind, text, location) {
 }
 
 Token.prototype.toString = function() {
-    return this.location.toString() + ' kind:' + this.kind + ' text:' + this.text;
+    var data = {
+        "location": this.location.toString(), 
+        "kind": this.kind, 
+        "message": this.text
+    };
+    return "{location} kind:{kind} text:{message}".format(data);
 }
 
 /*
     Tokens
 */
-Token.EOF = 'EOF';
+Token.EOF = '<END>';
 Token.NEWLINE = 'NEWLINE';
 Token.INDENT = 'INDENT';
 Token.IDENTIFIER = 'IDENTIFIER';

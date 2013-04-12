@@ -1,15 +1,14 @@
-var Message = function(token, message, additional) {
+var Message = function(token, message) {
     this.token = token;
     this.message = message;
-    this.additional = additional || null;
 };
 
 Message.prototype.toString = function() {
-    
-    if (this.additional) {
-        return this.token.location.toString() + ' ' + this.message + ' ' + this.additional;
-    }
-    return this.token.location.toString() + ' ' + this.message;
+    var data = {
+        "location": this.token.location.toString(), 
+        "message": this.message
+    };
+    return "{location} {message}".format(data);
 };
 
 Message.UnknownToken = 'Unknown token';
@@ -27,7 +26,16 @@ Message.IllegalBreakPosition = 'Break statement have to be declared in iteration
 Message.IllegalReturn = 'Return statement has to be contained in function';
 Message.IllegalReturnArgument = 'Return argument has to be one';
 Message.IllegalRaise = 'Illegal raise statement';
+Message.IllegalRaiseArgument =  'Raise argument has to be one';
 Message.IllegalExcept = 'Illegal raise statement';
 Message.IllegalFinally = 'Illegal finally statement';
 Message.IndentSize = 'Indent size may be incorrect';
 Message.IllegalIdentifier = 'Illegal identifier';
+Message.IllegalArgumentList = 'Illegal arguments';
+Message.IllegalPostfixIncrement = 'Postfix increment operator is only for identifier';
+Message.IllegalPostfixDecrement = 'Postfix decrement operator is only for identifier';
+Message.IllegalPrefixIncrement = 'Prefix increment operator is only for identifier';
+Message.IllegalPrefixDecrement = 'Prefix decrement operator is only for identifier';
+Message.IllegalMultiplicativeExpression = 'Illegal multiplicative expression';
+Message.IllegalShiftExpression = 'Illegal shift expression';
+Message.IllegalRelationalExpression = 'Illegal relational expression';
