@@ -1,15 +1,12 @@
 if (String.prototype.format == undefined) {
-	String.prototype.format = function(arg) {
-		
-        var rep_fn = undefined;
-        
-        if (typeof arg == "object") {
-            rep_fn = function(m, k) { return arg[k]; }
+    String.prototype.format = function(args) {
+        var func;
+        if (typeof args == "object") {
+            func = function(m, k) { return args[k]; }
         } else {
             var args = arguments;
-            rep_fn = function(m, k) { return args[parseInt(k)]; }
+            func = function(m, k) { return args[parseInt(k)]; }
         }
-        
-        return this.replace(/\{(\w+)\}/g, rep_fn);
+        return this.replace(/\{(\w+)\}/g, func);
     }
 }

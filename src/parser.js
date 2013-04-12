@@ -16,11 +16,8 @@ Parser.prototype.consume = function(k) {
     k = k || 1;
     while (k > 0) {
         this.p++;
-        if (this.p < this.tokens.length) {
-            this.token = this.tokens[this.p];
-        } else {
-            this.token = new Token(Token.EOF, '', this.tokens[this.tokens.length - 1].location);
-        }
+        if (this.p < this.tokens.length) this.token = this.tokens[this.p];
+        else this.token = new Token(Token.EOF, '', this.tokens[this.tokens.length - 1].location);
         k--;
     }
 }
@@ -98,7 +95,6 @@ Parser.prototype.parse = function() {
         SourceElements
 */
 Parser.prototype.parseProgram = function() {
-    
     for (var i = 1; i < this.tokens.length; i++) {
         if (this.tokens[i].kind === Token.INDENT) {
             this.indent_size = this.tokens[i].text;
@@ -117,9 +113,7 @@ Parser.prototype.parseProgram = function() {
         SourceElements SourceElement
 */
 Parser.prototype.parseSourceElements = function() {
-    
     var nodes = [];
-    
     while (1) {
         // the first token would be Token.Indent. 
         if (this.lookahead(1).kind === Token.EOF) {
@@ -134,7 +128,6 @@ Parser.prototype.parseSourceElements = function() {
         // line terminator of eof
         if (this.matchKind(Token.NEWLINE)) this.consume();
     }
-    
     return nodes;
 }
 
@@ -146,16 +139,7 @@ Parser.prototype.parseSourceElements = function() {
         FunctionDeclaration
 */
 Parser.prototype.parseSourceElement = function() {
-    
-    var statements = this.parseStatement();
-    if (statements) {
-        return statements;
-    }
-    
-    var statements = this.parseFunctionDeclaration();
-    if (statements) {
-        return statements;
-    }
+    return this.parseStatement() || this.parseFunctionDeclaration();
 }
 
 /*
@@ -175,24 +159,14 @@ Parser.prototype.parseSourceElement = function() {
 */
 Parser.prototype.parseStatement = function() {
     
-    // if (this.token.kind === Token.INDENT) {
-    //     this.updateIndent();
-    //     this.consume();
-    //     return this.parseStatement();
-    // }
-    
-    if (this.token.kind === Token.INDENT) {
-        this.consume();
-        return this.parseStatement();
-    }
-    
-    if (this.matchKind(Token.PUNCTUATOR)) {
+    if (this.token.kind === Token.PUNCTUATOR) {
         if (this.match(':')) {
             return this.parseBlock();
         }
     }
     
     switch (this.token.kind) {
+    //case Token.INDENT: this.consume(); return this.parseStatement();
     case Token.NEWLINE: return this.parseEmptyStatement();
     case Token.KEYWORDS.IF: return this.parseIfStatement();
     case Token.KEYWORDS.WHILE: return this.parseIterationStatement(); 
@@ -250,12 +224,10 @@ Parser.prototype.parseBlock = function() {
         StatementList Statement
 */
 Parser.prototype.parseStatementList = function() {
-    
     var exprs = [];
     var indent = this.indent * this.indent_size;
     
     while (1) {
-        
         if (this.token.kind === Token.EOF) break;
         if (this.token.kind === Token.NEWLINE) { // ignore newline token
             this.consume();
@@ -277,7 +249,6 @@ Parser.prototype.parseStatementList = function() {
     if (exprs.length > 0) {
         exprs[exprs.length - 1].last = true;
     }
-    
     return exprs;
 }
 
@@ -288,7 +259,6 @@ Parser.prototype.parseStatementList = function() {
         LineTerminator
 */
 Parser.prototype.parseEmptyStatement = function() {
-    
     var token = this.token;
     this.expectKind(Token.NEWLINE);
     
@@ -307,10 +277,7 @@ Parser.prototype.parseEmptyStatement = function() {
         [lookahead ∉ {:, def} ] Expression ;
 */
 Parser.prototype.parseExpressionStatement = function() {
-    
-    if (this.match('def') || this.match(':')) {
-        return;
-    }
+    if (this.match('def') || this.match(':')) return;
     return this.parseExpression();
 }
 
@@ -325,9 +292,7 @@ Parser.prototype.parseIfStatement = function() {
     
     var alternate = null;
     var indent = this.indent * this.indent_size;
-    
     this.expect('if');
-    
     var expr = this.parseExpression();
     var exprs = this.parseStatement();
     
@@ -417,7 +382,6 @@ Parser.prototype.parseIterationStatement = function() {
         continue
 */
 Parser.prototype.parseContinueStatement = function() {
-    
     this.consume();
     if (!(this.token.kind === Token.NEWLINE 
        || this.token.kind === Token.EOF)) {
@@ -440,7 +404,6 @@ Parser.prototype.parseContinueStatement = function() {
         break
 */
 Parser.prototype.parseBreakStatement = function() {
-    
     this.consume();
     if (!(this.token.kind === Token.NEWLINE 
        || this.token.kind === Token.EOF)) {
@@ -463,7 +426,6 @@ Parser.prototype.parseBreakStatement = function() {
     return [LineTerminator 無し] Expressionopt ;
 */
 Parser.prototype.parseReturnStatement = function() {
-    
     this.consume();
     if (!this.inFunction) {
         throw new Message(this.token, Message.IllegalReturn).toString();
@@ -493,9 +455,9 @@ Parser.prototype.parseReturnStatement = function() {
         raise [LineTerminator 無し] Expression
 */
 Parser.prototype.parseRaiseStatement = function() {
-    
     var argument = null;
     this.consume();
+    
     if (!(this.token.kind === Token.NEWLINE 
        || this.token.kind === Token.EOF)) {
         argument = this.parseExpression()
@@ -549,13 +511,11 @@ Parser.prototype.parseTryStatement = function() {
         except Identifieropt: Block
 */
 Parser.prototype.parseExceptStatement = function() {
-    
     var param = null;
     this.expect('except');
     if (!this.match(':')) {
         param = this.parseIdentifier();
     }
-    
     return {
         type: Syntax.ExceptStatement,
         param: param,
@@ -570,12 +530,10 @@ Parser.prototype.parseExceptStatement = function() {
         finally Block
 */
 Parser.prototype.parseFinallyStatement = function() {
-    
     this.consume();
     if (!this.match(':')) {
         throw new Message(this.token, Message.IllegalFinally).toString();
     }
-    
     return {
         type: Syntax.FinallyStatement,
         body: this.parseBlock()
