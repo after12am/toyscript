@@ -830,98 +830,69 @@ Parser.prototype.parseGroupingOperator = function() {
         MemberExpression . Identifier
         new MemberExpression Arguments
 */
-Parser.prototype.parseLeftHandSideExpressions = function() {
+Parser.prototype.parseMemberExpression = function(allow_call) {
+    
+    if (this.match('new')) {
+        return this.parseNewExpression();
+    }
     
     var expr = this.parseFunctionExpression() || this.parsePrimaryExpression();
     
-    if (this.match('[')) {
-        return {
-            type: Syntax.MemberExpression,
-            object: expr,
-            member: this.parseMemberExpression(),
-        };
-    }
-    
-    if (this.match('.')) {
-        return {
-            type: Syntax.MemberExpression,
-            object: expr,
-            member: this.parseMemberExpression(),
-        };
-    }
-    
-    if (this.match('(')) {
-        return {
-            type: Syntax.MemberExpression,
-            callee: expr,
-            arguments: this.parseArguments()
-        };
+    while (1) {
+        if (this.token.kind === Token.EOF
+         || this.token.kind === Token.NEWLINE) break;
+        
+        if (this.match('[')) {
+            expr = this.parseComputedMember(expr);
+            continue;
+        }
+        
+        if (this.match('.')) {
+            expr = this.parseNonComputedMember(expr);
+            continue;
+        }
+        
+        if (allow_call && this.match('(')) {
+            expr = this.parseCallMember(expr);
+            continue;
+        }
+        
+        break;
     }
     
     return expr;
 }
 
-/*
-    11.2 Left-Hand-Side Expressions
+Parser.prototype.parseComputedMember = function(object) {
+    this.expect('[');
+    var expr = this.parseExpression();
+    this.expect(']');
+    return {
+        type: Syntax.MemberExpression,
+        computed: true,
+        object: object,
+        property: expr
+    };
+}
+
+Parser.prototype.parseNonComputedMember = function(object) {
+    this.expect('.');
+    var expr = this.parseIdentifier();
+    return {
+        type: Syntax.MemberExpression,
+        computed: false,
+        object: object,
+        property: expr
+    };
     
-    MemberExpression :
-        PrimaryExpression
-        FunctionExpression
-        MemberExpression [ Expression ]
-        MemberExpression . Identifier
-        new MemberExpression Arguments
-*/
-Parser.prototype.parseMemberExpression = function() {
-    
-    if (this.match('[')) {
-        this.consume();
-        
-        var object = {
-            type: Syntax.MemberExpression,
-            object: this.parseExpression(),
-            syntax: 'bracket'
-        };
-        
-        this.expect(']');
-        
-        if (this.match('[') || this.match('.') || this.match('(')) {
-            object.member = this.parseMemberExpression();
-        }
-        
-        return object;
-    }
-    
-    if (this.match('.')) {
-        this.consume();
-        
-        var object = {
-            type: Syntax.MemberExpression,
-            object: this.parseIdentifier(),
-            syntax: 'dot'
-        };
-        
-        if (this.match('[') || this.match('.') || this.match('(')) {
-            object.member = this.parseMemberExpression();
-        }
-        
-        return object;
-    }
-    
-    if (this.match('(')) {
-        
-        var object = {
-            type: Syntax.MemberExpression,
-            callee: null,
-            arguments: this.parseArguments(),
-            syntax: 'parenthesis'
-        };
-        
-        if (this.match('[') || this.match('.') || this.match('(')) {
-            object.member = this.parseMemberExpression();
-        }
-        
-        return object;
-    }
+}
+
+Parser.prototype.parseCallMember = function(object) {
+    return {
+        type: Syntax.CallExpression,
+        callee: object,
+        'arguments': this.parseArguments()
+    };
 }
 
 /*
@@ -935,109 +906,20 @@ Parser.prototype.parseNewExpression = function() {
     
     if (this.match('new')) {
         this.consume();
-        var expr = this.parseNewExpression();
+        var callee = this.parseNewExpression();
+        console.log(callee)
+        var arguments = this.parseArguments();
+        
+        
         return {
             type: Syntax.NewExpression,
-            callee: expr['callee'],
-            arguments: expr['arguments']
+            callee: callee,
+            arguments: arguments
         };
     }
     
-    return this.parseLeftHandSideExpressions();
+    return this.parseMemberExpression();
 }
-
-/*
-    11.2.3 Function Calls
-    
-    CallExpression :
-        MemberExpression Arguments
-        CallExpression Arguments
-        CallExpression [ Expression ]
-        CallExpression . Identifier
-*/
-/*
-Parser.prototype.parseCallExpression = function() {
-    
-    if (this.match('[')) {
-        return {
-            type: Syntax.CallExpression,
-            object: expr,
-            member: this.parseCallMember(),
-        };
-    }
-    
-    if (this.match('.')) {
-        return {
-            type: Syntax.CallExpression,
-            object: expr,
-            member: this.parseCallMember(),
-        };
-    }
-    
-    if (this.match('(')) {
-        return {
-            type: Syntax.CallExpression,
-            callee: expr,
-            arguments: this.parseArguments()
-        };
-    }
-    
-    return expr;
-}
-
-Parser.prototype.parseCallMember = function() {
-    
-    if (this.match('[')) {
-        this.consume();
-        
-        var object = {
-            type: Syntax.CallExpression,
-            object: this.parseExpression(),
-            syntax: 'bracket'
-        };
-        
-        this.expect(']');
-        
-        if (this.match('[') || this.match('.') || this.match('(')) {
-            object.member = this.parseCallMember();
-        }
-        
-        return object;
-    }
-    
-    if (this.match('.')) {
-        this.consume();
-        
-        var object = {
-            type: Syntax.CallExpression,
-            object: this.parseExpression(),
-            syntax: 'dot'
-        };
-        
-        if (this.match('[') || this.match('.') || this.match('(')) {
-            object.member = this.parseCallMember();
-        }
-        
-        return object;
-    }
-    
-    if (this.match('(')) {
-        
-        var object = {
-            type: Syntax.CallExpression,
-            callee: null,
-            arguments: this.parseArguments(),
-            syntax: 'parenthesis'
-        };
-        
-        if (this.match('[') || this.match('.') || this.match('(')) {
-            object.member = this.parseCallMember();
-        }
-        
-        return object;
-    }
-}
-*/
 
 /*
     11.2.4 Argument Lists
@@ -1130,7 +1012,10 @@ Parser.prototype.parseFunctionExpression = function() {
         CallExpression
 */
 Parser.prototype.parseLeftHandSideExpression = function() {
-    return this.parseNewExpression();// || this.parseCallExpression();
+    if (this.match('new')) {
+        this.parseNewExpression();
+    }
+    return this.parseMemberExpression(true);
 }
 
 /*
