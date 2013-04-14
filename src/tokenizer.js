@@ -444,12 +444,18 @@ Tokenizer.prototype.scanDigit = function() {
     var digit = '';
     
     while (this.c !== Token.EOF) {
-        if (this.isDigit(this.c)) {
+        if (this.isDigit(this.c) || this.c === '.') {
             digit += this.c;
             this.consume();
         } else {
             break;
         }
+    }
+    
+    if (digit.match(/\./)) {
+        digit = parseFloat(digit, 10);
+    } else {
+        digit = parseInt(digit, 10);
     }
     
     return new Token(Token.DIGIT, digit, new Location(this.line, this.column));

@@ -1,4 +1,6 @@
 // http://www2u.biglobe.ne.jp/~oz-07ams/prog/ecma262r3/
+// https://developer.mozilla.org/en-US/docs/SpiderMonkey/Parser_API
+// https://github.com/mozilla/sweet.js
 
 var Parser = function(tokens, log) {
     this.p = 0;
@@ -179,6 +181,8 @@ Parser.prototype.parseStatement = function() {
     case Token.COMMENT: return this.parseComment();
     default: return this.parseExpressionStatement();
     }
+    
+    throw new Message(this.token, Message.UnexpectedToken + ' \'{token}\''.format(this.token.text)).toString();
 }
 
 /*
@@ -625,7 +629,7 @@ Parser.prototype.parseIdentifier = function() {
     this.consume();
     return {
         type: Syntax.Identifier,
-        value: token.text 
+        name: token.text 
     };
 }
 
@@ -644,8 +648,8 @@ Parser.prototype.parseLiteral = function() {
         var token = this.token;
         this.consume();
         return {
-            type: Syntax.NoneLiteral,
-            value: token.text
+            type: Syntax.Literal,
+            value: null
         };
     }
     
@@ -653,8 +657,8 @@ Parser.prototype.parseLiteral = function() {
         var token = this.token;
         this.consume();
         return {
-            type: Syntax.BooleanLiteral,
-            value: token.text
+            type: Syntax.Literal,
+            value: (token.text === 'true')
         };
     }
     
@@ -662,7 +666,7 @@ Parser.prototype.parseLiteral = function() {
         var token = this.token;
         this.consume();
         return {
-            type: Syntax.NumericLiteral,
+            type: Syntax.Literal,
             value: token.text
         };
     }
@@ -671,10 +675,12 @@ Parser.prototype.parseLiteral = function() {
         var token = this.token;
         this.consume();
         return {
-            type: Syntax.StringLiteral,
+            type: Syntax.Literal,
             value: token.text
         };
     }
+    
+    // RegExp
 }
 
 /*
@@ -751,18 +757,35 @@ Parser.prototype.parseObjectInitialiser = function() {
         PropertyNameAndValueList , PropertyName : AssignmentExpression
 */
 Parser.prototype.parsePropertyNameAndValueList = function() {
+    
     var props = [];
+    
     while (!this.match('}')) {
-        if (this.match(',')) {
-            this.consume();
-        }
-        var name = this.parsePropertyName();
+        if (this.match(',')) this.consume();
+        
+        var key = this.parsePropertyName();
         this.expect(':');
-        props.push({
-            type: Syntax.Property,
-            name: name,
-            value: this.parseAssignmentExpression()
-        });
+        
+        if (key.type === Syntax.Identifier) {
+            props.push({
+                type: Syntax.Property,
+                key: key,
+                value: this.parseAssignmentExpression(),
+                kind: 'init'
+            });
+        }
+        
+        if (key.type === Syntax.Literal) {
+            props.push({
+                type: Syntax.Property,
+                key: {
+                    type: key.type,
+                    value: key.name
+                },
+                value: this.parseAssignmentExpression(),
+                raw: 'init'
+            });
+        }
     }
     return props;
 }
@@ -790,7 +813,7 @@ Parser.prototype.parsePropertyName = function() {
         var token = this.token;
         this.consume();
         return {
-            type: Syntax.StringLiteral,
+            type: Syntax.Literal,
             name: token.text
         };
     }
@@ -799,7 +822,7 @@ Parser.prototype.parsePropertyName = function() {
         var token = this.token;
         this.consume();
         return {
-            type: Syntax.NumericLiteral,
+            type: Syntax.Literal,
             name: token.text
         };
     }
@@ -1600,9 +1623,6 @@ Parser.prototype.parseComment = function() {
         }
     }
 }
-
-
-
 
 /*
     13 Function Definition

@@ -26,6 +26,13 @@
 * typeof a -> type(a)
 * decide conditional expression grammer
 * raise -> throw new Error("");
+	
+	
+	[DONE]
+	For using escodegen, modify the ast tree node structure.
+	
+	* parsePrimaryExpression
+
 
 
 [build-in]
