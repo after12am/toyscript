@@ -658,7 +658,7 @@
         return '/*' + comment.value + '*/';
     }
 
-    function addCommentsToStatement(stmt, result) {console.log("a")
+    function addCommentsToStatement(stmt, result) {
         var i, len, comment, save, node, tailingToStatement, specialBase, fragment;
 
         if (stmt.leadingComments && stmt.leadingComments.length > 0) {
@@ -1594,7 +1594,15 @@
             });
             result.push(maybeBlock(stmt.body, semicolon === ''));
             break;
-
+        
+        case Syntax.Block:
+            result = ["/*" + stmt.value + "*/"];
+            break;
+        
+        case Syntax.Line:
+            result = ["//" + stmt.value];
+            break;
+        
         default:
             throw new Error('Unknown statement type: ' + stmt.type);
         }

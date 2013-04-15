@@ -1627,24 +1627,20 @@ Parser.prototype.parseComment = function() {
         var token = this.token;
         this.consume();
         return {
-            type: Syntax.Comment,
-            value: token.text,
-            multiple: true
+            type: Syntax.Block,
+            // range: [start, end],
+            value: token.text
         }
     }
     // single line comment
     else {
         var token = this.token;
         this.consume();
-        // return {
-        //     range: [1, 4],
-        //     type: 'Program',
-        //     value: token.text
-        // }
+        
         return {
-            type: Syntax.Comment,
-            value: token.text,
-            multiple: false
+            type: Syntax.Line,
+            // range: [start, end],
+            value: token.text
         }
     }
 }
