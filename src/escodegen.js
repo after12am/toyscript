@@ -658,7 +658,7 @@
         return '/*' + comment.value + '*/';
     }
 
-    function addCommentsToStatement(stmt, result) {
+    function addCommentsToStatement(stmt, result) {console.log("a")
         var i, len, comment, save, node, tailingToStatement, specialBase, fragment;
 
         if (stmt.leadingComments && stmt.leadingComments.length > 0) {
@@ -2007,16 +2007,11 @@
         return tree;
     }
     
-    // exports.escodegen = {};
-    // exports.escodegen.generate = generate;
-    // exports.escodegen.traverse = traverse;
-    // exports.escodegen.attachComments = attachComments;
-    // exports.escodegen.generate = generate;
-    
+    exports.escodegen = {};
+    exports.escodegen.version = '0.0.13-dev';
     exports.generate = generate;
     exports.traverse = traverse;
     exports.attachComments = attachComments;
-    exports.generate = generate;
     exports.Syntax = Syntax;
     
 }, this));

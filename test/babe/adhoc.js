@@ -5,10 +5,13 @@ var source = fs.readFileSync('source.babe.js', 'utf8');
 
 try {
     var nodes = babe.parse(source);
-    console.log('result: ', nodes)
+    var options = {};
+    console.log('result: ', nodes);
+    console.log(babe.escodegen.generate(nodes, options));
+    
 } catch (e) {
-    console.log(e)
+    console.log(e);
 }
 
-console.log('\n\n')
+console.log('\n\n');
 process.stdin.resume();
