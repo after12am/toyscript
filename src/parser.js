@@ -189,7 +189,6 @@ Parser.prototype.parseStatement = function() {
     
     switch (this.token.kind) {
     case Token.COMMENT: return this.parseComment();
-    //case Token.INDENT: this.consume(); return this.parseStatement();
     case Token.NEWLINE: return this.parseEmptyStatement();
     case Token.KEYWORDS.IF: return this.parseIfStatement();
     case Token.KEYWORDS.WHILE: return this.parseIterationStatement(); 
@@ -272,8 +271,6 @@ Parser.prototype.parseStatementList = function() {
         exprs.push(this.parseStatement());
     }
     
-    // last property is no longer use because we decide to use encodegen
-    //if (exprs.length > 0) exprs[exprs.length - 1].last = true;
     return exprs;
 }
 
@@ -646,14 +643,6 @@ Parser.prototype.parsePrimaryExpression = function() {
     11.1.2 Identifier Reference
 */
 Parser.prototype.parseIdentifier = function() {
-    
-    // if (this.lookahead(1).kind == Token.EOF 
-    //  || this.lookahead(1).kind == Token.NEWLINE) {
-    //     if (this.lookback(1).kind !== Token.PUNCTUATOR) {
-    //         throw new Message(this.token, Message.IllegalIdentifier).toString();
-    //     }
-    // }
-    
     var token = this.token;
     this.consume();
     return {
