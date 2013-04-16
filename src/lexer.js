@@ -53,7 +53,8 @@ Lexer.prototype.matchAssign = function(op) {
     // 2character assignment
     if (op === '*=' || op === '/=' || op === '%=' || 
         op === '+=' || op === '-=' || op === '&=' || 
-        op === '^=' || op === '|=') {
+        op === '^=' || op === '|=' || op === '<=' ||
+        op === '>=' || op === '==' || op === '!=') {
         return true;
     }
     
