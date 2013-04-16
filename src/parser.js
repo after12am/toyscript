@@ -1443,7 +1443,7 @@ Parser.prototype.parseBitwiseXORExpression = function() {
     
     var expr = this.parseBitwiseANDExpression();
     
-    if (this.match('^')) {
+    if (this.match('^') || this.match('xor')) {
         var token = this.token;
         this.consume();
         return {
@@ -1619,6 +1619,10 @@ Parser.prototype.parseExpression = function() {
 
 /*
     7.4 Comments
+    
+    Comment ::
+        MultiLineComment
+        SingleLineComment
 */
 Parser.prototype.parseComment = function() {
     

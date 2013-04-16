@@ -61,7 +61,7 @@ Tokenizer.prototype.tokenize = function() {
         }
         
         // ignore white spaces
-        if (this.isWhiteSpace(this.c)) {
+        if (this.matchWhiteSpace(this.c)) {
             this.consume();
             continue;
         }
@@ -77,15 +77,15 @@ Tokenizer.prototype.tokenize = function() {
             continue;
         }
         
-        if (this.isLetter(this.c)) {
+        if (this.matchLetter(this.c)) {
             if (token = this.scanIdent()) {
                 tokens.push(token);
                 continue;
             }
         }
         
-        if (this.isDigit(this.c)) {
-            if (this.isLetter(this.lookahead(1)) && this.lookahead(1) !== 'EOF') {
+        if (this.matchDigit(this.c)) {
+            if (this.matchLetter(this.lookahead(1)) && this.lookahead(1) !== 'EOF') {
                 var ss = this.c;
                 this.consume();
                 var ident = this.scanIdent();
@@ -138,6 +138,15 @@ Tokenizer.prototype.scanIndent = function() {
     return new Token(Token.INDENT, this.indent, new Location(this.line, this.column));
 }
 
+/*
+    7.3 Line Terminators
+    
+    LineTerminator ::
+        <LF>
+        <CR>
+        <LS>
+        <PS>
+*/
 Tokenizer.prototype.scanLineTerminator = function() {
     
     var c = this.c;
@@ -156,7 +165,9 @@ Tokenizer.prototype.scanLineTerminator = function() {
 /*
     7.4 Comments
     
-    http://www2u.biglobe.ne.jp/~oz-07ams/prog/ecma262r3/7_Lexical_Conventions.html#Comment
+    Comment ::
+        MultiLineComment
+        SingleLineComment
 */
 Tokenizer.prototype.scanComment = function() {
     
@@ -164,7 +175,7 @@ Tokenizer.prototype.scanComment = function() {
     if (sign === '#') {
         this.consume();
         var comment = '';
-        while (!(this.c === Token.EOF || this.isLineTerminator(this.c))) {
+        while (!(this.c === Token.EOF || this.matchLineTerminator(this.c))) {
             comment += this.c;
             this.consume();
         }
@@ -279,7 +290,7 @@ Tokenizer.prototype.scanKeyword = function() {
     var c = this.source[this.p];
     
     while (this.c !== Token.EOF) {
-        if (this.isLetter(c) || this.isDigit(c)) {
+        if (this.matchLetter(c) || this.matchDigit(c)) {
             keyword += c;
             c = this.source[++p];
             continue;
@@ -315,7 +326,7 @@ Tokenizer.prototype.scanIdent = function() {
     var ident = '';
     
     while (this.c !== Token.EOF) {
-        if (this.isLetter(this.c) || this.isDigit(this.c)) {
+        if (this.matchLetter(this.c) || this.matchDigit(this.c)) {
             ident += this.c;
             this.consume();
             continue;
@@ -396,6 +407,12 @@ Tokenizer.prototype.scanOperator = function() {
     }
 }
 
+/*
+    11.13 Assignment Operators
+    
+    AssignmentOperator : one of
+        = *= /= %= += -= <<= >>= >>>= &= ^= |=
+*/
 Tokenizer.prototype.scanAssign = function() {
     
     // 4character assignment
@@ -438,13 +455,17 @@ Tokenizer.prototype.scanAssign = function() {
 
 /*
     7.8.3 Numeric Literals
+    
+    NumericLiteral ::
+        DecimalLiteral
+        HexIntegerLiteral
 */
 Tokenizer.prototype.scanDigit = function() {
     
     var digit = '';
     
     while (this.c !== Token.EOF) {
-        if (this.isDigit(this.c) || this.c === '.') {
+        if (this.matchDigit(this.c) || this.c === '.') {
             digit += this.c;
             this.consume();
         } else {
@@ -463,6 +484,10 @@ Tokenizer.prototype.scanDigit = function() {
 
 /*
     7.8.4 String Literals
+    
+    StringLiteral ::
+        " DoubleStringCharactersopt "
+        ' SingleStringCharactersopt '
 */
 Tokenizer.prototype.scanString = function(delimiter) {
     
@@ -471,7 +496,7 @@ Tokenizer.prototype.scanString = function(delimiter) {
     this.consume();
     
     while (1) {
-        if (this.c === Token.EOF || this.isLineTerminator(this.c)) {
+        if (this.c === Token.EOF || this.matchLineTerminator(this.c)) {
             var token = new Token('', this.c, new Location(this.line, this.column));
             throw new Message(token, Message.UnexpectedString).toString();
         }

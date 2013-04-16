@@ -1,3 +1,4 @@
 Syntax = exports.escodegen.Syntax;
-Syntax.Comment = 'Comment';
+Syntax.Block = 'Block';
+Syntax.Line = 'Line';
 Syntax.NEWLINE = 'NewLine';

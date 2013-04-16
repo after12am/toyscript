@@ -13,8 +13,8 @@ var Lexer = function() {
         <NBSP>
         <USP>
 */
-Lexer.prototype.isWhiteSpace = function(c) {
-    return c.match(/^\s$/) && !this.isLineTerminator(c);
+Lexer.prototype.matchWhiteSpace = function(c) {
+    return c.match(/^\s$/) && !this.matchLineTerminator(c);
 }
 
 /*
@@ -26,18 +26,35 @@ Lexer.prototype.isWhiteSpace = function(c) {
         <LS>
         <PS>
 */
-Lexer.prototype.isLineTerminator = function(c) {
+Lexer.prototype.matchLineTerminator = function(c) {
     return c === '\n' || c === '\r' || c === '\u2028' || c === '\u2029';
 }
 
-Lexer.prototype.isDigit = function(c) {
+/*
+    7.8.3 Numeric Literals
+    
+    DecimalDigit :: one of
+        0 1 2 3 4 5 6 7 8 9
+*/
+Lexer.prototype.matchDigit = function(c) {
     return c >= "0" && c <= "9";
 }
 
-Lexer.prototype.isLetter = function(c) {
+/*
+    7.8.4 String Literals
+    
+    one of [a-ZA-Z_$]
+*/
+Lexer.prototype.matchLetter = function(c) {
     return c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_" || c === "$";
 }
 
+/*
+    11.13 Assignment Operators
+    
+    AssignmentOperator : one of
+        = *= /= %= += -= <<= >>= >>>= &= ^= |=
+*/
 Lexer.prototype.matchAssign = function(op) {
     
     // 4character assignment
