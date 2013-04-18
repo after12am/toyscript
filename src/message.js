@@ -39,3 +39,4 @@ Message.IllegalPrefixDecrement = 'Prefix decrement operator is only for identifi
 Message.IllegalMultiplicativeExpression = 'Illegal multiplicative expression';
 Message.IllegalShiftExpression = 'Illegal shift expression';
 Message.IllegalRelationalExpression = 'Illegal relational expression';
+Message.IllegalIsinstance = 'isinstance build-in function has to have two arguments';

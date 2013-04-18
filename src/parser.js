@@ -936,6 +936,23 @@ Parser.prototype.parseNonComputedMember = function(object) {
 }
 
 Parser.prototype.parseCallMember = function(object) {
+    
+    // 11.8.6 The instanceof operator
+    if (object.name === 'isinstance') {
+        var arguments = this.parseArguments();
+        if (arguments.length !== 2) {
+            throw new Message(this.token, Message.IllegalIsinstance).toString();
+        }
+        var token = this.token;
+        this.consume();
+        return {
+            type: Syntax.BinaryExpression,
+            operator: 'instanceof',
+            left: arguments[0],
+            right: arguments[1]
+        };
+    }
+    
     return {
         type: Syntax.CallExpression,
         callee: object,
@@ -1332,18 +1349,6 @@ Parser.prototype.parseRelationalExpression = function() {
             right: this.parseShiftExpression()
         };
     }
-    
-    /*
-    if (this.match('instanceof')) {
-        var token = this.token;
-        this.consume();
-        return {
-            type: Syntax.BinaryExpression,
-            operator: token.text,
-            expr: expr,
-        };
-    }
-    */
     
     // 11.8.7
     if (this.match('in')) {
