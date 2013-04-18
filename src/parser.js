@@ -1437,12 +1437,12 @@ Parser.prototype.parseBitwiseXORExpression = function() {
     
     var expr = this.parseBitwiseANDExpression();
     
-    if (this.match('^') || this.match('xor')) {
+    if (this.match('^')) {
         var token = this.token;
         this.consume();
         return {
             type: Syntax.BinaryExpression,
-            operator: token.text,
+            operator: '^',
             left: expr,
             right: this.parseBitwiseANDExpression()
         };
@@ -1512,7 +1512,7 @@ Parser.prototype.parseLogicalORExpression = function() {
     var expr = this.parseLogicalANDExpression();
     var or = this.token.text;
     
-    if (or == 'or') {
+    if (this.match('or')) {
         this.consume();
         expr = {
             type: Syntax.BinaryExpression,
