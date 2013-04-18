@@ -99,11 +99,6 @@ Parser.prototype.updateIndent = function() {
 }
 */
 
-// alias of Parser.parseProgram
-Parser.prototype.parse = function() {
-    return this.parseProgram();
-}
-
 /*
     14 Program
     
@@ -320,7 +315,6 @@ Parser.prototype.parseIfStatement = function() {
     this.expect('if');
     var test = this.parseExpression();
     var consequent = this.parseStatement();
-    console.log(consequent)
     if (this.matchKind(Token.INDENT)) {
         if (!this.match(indent)) {
             throw new Message(this.token, Message.IndentSize).toString();
@@ -938,7 +932,6 @@ Parser.prototype.parseNonComputedMember = function(object) {
         object: object,
         property: expr
     };
-    
 }
 
 Parser.prototype.parseCallMember = function(object) {
@@ -1702,3 +1695,8 @@ Parser.prototype.parseFormalParameterList = function() {
 Parser.prototype.parseFunctionBody = function() {
     return this.parseBlock();
 }
+
+/*
+    alias of Parser.parseProgram
+*/
+Parser.prototype.parse = Parser.prototype.parseProgram;

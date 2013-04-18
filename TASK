@@ -29,7 +29,6 @@ https://developer.mozilla.org/ja/docs/JavaScript/Reference
 * raise -> throw new Error("");
 * if token is variable, set var identifier
 * able to parse default argument like new Class(a = 2)
-* delete CodeGen function
 * extends Message function with Error
     https://developer.mozilla.org/ja/docs/JavaScript/Reference/Global_Objects/Error
     http://ja.wikibooks.org/wiki/JavaScript_%E6%A8%99%E6%BA%96%E3%83%A9%E3%82%A4%E3%83%96%E3%83%A9%E3%83%AA_Error

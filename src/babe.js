@@ -1,3 +1,5 @@
+var javascript = null;
+
 exports.tokenize = function(source) {
     var tokens = [];
     var tokenizer = new Tokenizer(source);
@@ -5,35 +7,39 @@ exports.tokenize = function(source) {
     return tokens;
 }
 
+/*
+    tokenize babescript
+*/
 exports.parse = function(source) {
     var tokens = exports.tokenize(source);
     var nodes = new Parser(tokens).parse();
     return nodes;
 }
 
+/*
+    convenience function of babe.compile()
+*/
 exports.codegen = function(source) {
     var nodes = exports.parse(source);
-    var compiled = new CodeGen(nodes).generate();
-    return compiled;
+    var javascript = exports.escodegen.generate(nodes)
+    return javascript;
 }
 
+/*
+    convert javascript to babescript
+*/
 exports.compile = function(source) {
-    var compiler = new Compiler(source);
-    compiler.compile();
-    return (!compiler.log.hasErrors);
+    throw new Error('not implemented');
 }
 
-exports.run = function(source) {
-    var res = exports.compile(source);
-    for (var i in res['log'].messages) {
-        console.log(res['log'].messages[i]);
-    }
-    if (res['error'] === false) {
-        eval(res['compiled']);
-    }
-    return res;
+/*
+    execute babescript
+*/
+exports.interpret = function(source) {
+    throw new Error('not implemented');
 }
 
-exports.interpret = function() {
-    return exports.run();
-}
+/*
+    alias of babe.interpret()
+*/
+exports.run = exports.interpret;

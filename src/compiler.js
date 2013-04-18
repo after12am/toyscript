@@ -13,11 +13,11 @@ Compiler.prototype.compile = function() {
     var tokenizer = new Tokenizer(this.source);
     var tokens;
     var nodes;
-    var compiled;
+    var javascript;
     
     if (tokens = tokenizer.tokenize()) {
         if (nodes = new Parser(tokens, log).parse()) {
-            compiled = new CodeGen(nodes).generate();
+            javascript = exports.escodegen.generate(nodes)
         }
     }
     
@@ -25,7 +25,7 @@ Compiler.prototype.compile = function() {
         'source': this.source,
         'tokens': token,
         'nodes': nodes,
-        'compiled': compiled,
+        'javascript': javascript,
         'log': log,
         'error': log.hasError()
     }
