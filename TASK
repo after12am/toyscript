@@ -20,7 +20,6 @@ https://developer.mozilla.org/ja/docs/JavaScript/Reference
 * have to read carefully 7.8.4 String Literals
 * have to implement 7.8.5 Regular Expression Literals
 * have to read 7.9 Automatic Semicolon Insertion, but I think this is under tested.
-* implement 11.4.3 The typeof Operator as type() function
 * decide conditional expression grammer
 * raise -> throw new Error("");
 * if token is variable, set var identifier
