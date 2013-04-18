@@ -54,7 +54,7 @@ Parser.prototype.expect = function(value, message) {
 }
 
 Parser.prototype.expectKind = function(value, message) {
-    if (this.token.kind !== kind) {
+    if (this.token.kind !== value) {
         if (message) {
             var data = {
                 "location": this.token.location.toString(), 
