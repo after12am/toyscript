@@ -21,7 +21,6 @@ https://developer.mozilla.org/ja/docs/JavaScript/Reference
 * have to implement 7.8.5 Regular Expression Literals
 * have to read 7.9 Automatic Semicolon Insertion, but I think this is under tested.
 * implement 11.4.3 The typeof Operator as type() function
-* new MemberExpression Arguments // a[new A()]
 * CallExpression // a()
 * instanceof a -> instance(a)
 * typeof a -> type(a)
