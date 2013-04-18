@@ -1,5 +1,6 @@
-var javascript = null;
-
+/*
+    break a stream of token
+*/
 exports.tokenize = function(source) {
     var tokens = [];
     var tokenizer = new Tokenizer(source);
@@ -8,7 +9,7 @@ exports.tokenize = function(source) {
 }
 
 /*
-    tokenize babescript
+    create abstract syntax tree from tokens
 */
 exports.parse = function(source) {
     var tokens = exports.tokenize(source);
@@ -21,7 +22,7 @@ exports.parse = function(source) {
 */
 exports.codegen = function(source) {
     var nodes = exports.parse(source);
-    var javascript = exports.escodegen.generate(nodes)
+    var javascript = escodegen.generate(nodes)
     return javascript;
 }
 

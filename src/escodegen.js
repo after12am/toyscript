@@ -33,6 +33,7 @@
 
 /*jslint bitwise:true */
 /*global escodegen:true, exports:true, generateStatement:true, process:true, require:true, define:true*/
+var escodegen = {};
 
 (function (factory, global) {
     'use strict';
@@ -50,11 +51,11 @@
     //     factory((global.escodegen = {}), global);
     // }
     
-    factory((exports.escodegen = {}), global);
+    factory((escodegen = {}), global);
     
 }(function (exports, global) {
     'use strict';
-
+    
     var Syntax,
         Precedence,
         BinaryPrecedence,
