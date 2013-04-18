@@ -1,6 +1,7 @@
 // http://www2u.biglobe.ne.jp/~oz-07ams/prog/ecma262r3/
 // https://developer.mozilla.org/en-US/docs/SpiderMonkey/Parser_API
 // https://github.com/mozilla/sweet.js
+// http://esprima.org/demo/parse.html
 
 var Parser = function(tokens, log) {
     this.p = 0;
@@ -1111,8 +1112,8 @@ Parser.prototype.parseUnaryExpression = function() {
         var expr = this.parseUnaryExpression();
         return {
             type: Syntax.UnaryExpression,
-            expr: expr,
-            operator: token.text
+            operator: token.text,
+            argument: expr
         };
     }
     
@@ -1145,8 +1146,8 @@ Parser.prototype.parseUnaryExpression = function() {
         // example, {} + {}, {} - {}
         return {
             type: Syntax.UnaryExpression,
-            expr: expr,
-            operator: token.text
+            operator: token.text,
+            argument: expr
         };
     }
     
@@ -1157,8 +1158,8 @@ Parser.prototype.parseUnaryExpression = function() {
         var expr = this.parseUnaryExpression();
         return {
             type: Syntax.UnaryExpression,
-            expr: expr,
-            operator: token.text
+            operator: '!',
+            argument: expr
         };
     }
     
