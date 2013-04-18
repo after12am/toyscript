@@ -937,6 +937,19 @@ Parser.prototype.parseNonComputedMember = function(object) {
 
 Parser.prototype.parseCallMember = function(object) {
     
+    // 11.4.3 The typeof Operator
+    if (object.name === 'type') {
+        var argument = this.parseArguments();
+        if (argument.length !== 1) {
+            throw new Message(this.token, Message.IllegalTypeof).toString();
+        }
+        return {
+            type: Syntax.UnaryExpression,
+            operator: 'typeof',
+            argument: argument[0]
+        };
+    }
+    
     // 11.8.6 The instanceof operator
     if (object.name === 'isinstance') {
         var arguments = this.parseArguments();
@@ -1123,7 +1136,7 @@ Parser.prototype.parsePostfixExpression = function() {
 Parser.prototype.parseUnaryExpression = function() {
     
     // 11.4.1 - 11.4.3
-    if (/*this.match('typeof') || */this.match('void') || this.match('delete')) {
+    if (this.match('void') || this.match('delete')) {
         var token = this.token;
         this.consume();
         var expr = this.parseUnaryExpression();
