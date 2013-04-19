@@ -948,36 +948,6 @@ Parser.prototype.parseNonComputedMember = function(object) {
 }
 
 Parser.prototype.parseCallMember = function(object) {
-    
-    // 11.4.3 The typeof Operator
-    if (object.name === 'type') {
-        var argument = this.parseArguments();
-        if (argument.length !== 1) {
-            throw new Message(this.token, Message.IllegalTypeof).toString();
-        }
-        return {
-            type: Syntax.UnaryExpression,
-            operator: 'typeof',
-            argument: argument[0]
-        };
-    }
-    
-    // 11.8.6 The instanceof operator
-    if (object.name === 'isinstance') {
-        var arguments = this.parseArguments();
-        if (arguments.length !== 2) {
-            throw new Message(this.token, Message.IllegalIsinstance).toString();
-        }
-        var token = this.token;
-        this.consume();
-        return {
-            type: Syntax.BinaryExpression,
-            operator: 'instanceof',
-            left: arguments[0],
-            right: arguments[1]
-        };
-    }
-    
     return {
         type: Syntax.CallExpression,
         callee: object,
@@ -1367,6 +1337,49 @@ Parser.prototype.parseRelationalExpression = function() {
             throw new Message(this.token, Message.IllegalRelationalExpression).toString();
         }*/
         
+        return {
+            type: Syntax.BinaryExpression,
+            operator: token.text,
+            left: expr,
+            right: this.parseShiftExpression()
+        };
+    }
+    
+    // 11.4.3 The typeof Operator
+    if (this.match('typeof')) {
+        var token = this.token;
+        this.consume();
+        var left = {
+            type: Syntax.UnaryExpression,
+            operator: 'typeof',
+            argument: expr
+        };
+        
+        /*
+            ShiftExpression :: one of 
+            
+                Undefined	"undefined"
+                Null	"object"
+                Boolean	"boolean"
+                Number	"number"
+                String	"string"
+                Object (native and doesn't implement [[Call]])	"object"
+                Object (native and implements [[Call]])	"function"
+                Object (host)	Implementation-dependent
+        */
+        
+        return {
+            type: Syntax.BinaryExpression,
+            operator: '===',
+            left: left,
+            right: this.parseShiftExpression()
+        };
+    }
+    
+    // 11.8.6 The instanceof operator
+    if (this.match('instanceof')) {
+        var token = this.token;
+        this.consume();
         return {
             type: Syntax.BinaryExpression,
             operator: token.text,
