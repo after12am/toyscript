@@ -25,14 +25,23 @@ Parser.prototype.consume = function(k) {
     }
 }
 
+/*
+    confirm whether argument matches value of token
+*/
 Parser.prototype.match = function(text) {
     return (this.token.text === text);
 }
 
+/*
+    confirm whether argument matches kind of token
+*/
 Parser.prototype.matchKind = function(kind) {
     return (this.token.kind === kind);
 }
 
+/*
+    throw error when argument does not match value of token
+*/
 Parser.prototype.expect = function(value, message) {
     if (this.token.text !== value) {
         if (message) {
@@ -53,6 +62,9 @@ Parser.prototype.expect = function(value, message) {
     this.consume();
 }
 
+/*
+    throw error when argument does not match kind of token
+*/
 Parser.prototype.expectKind = function(value, message) {
     if (this.token.kind !== value) {
         if (message) {

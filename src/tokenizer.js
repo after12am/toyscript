@@ -24,6 +24,9 @@ Tokenizer.prototype.consume = function() {
     }
 }
 
+/*
+    LL(k)
+*/
 Tokenizer.prototype.lookahead = function(k) {
     if (this.p + k < this.source.length) {
         return this.source[this.p + k];
@@ -32,6 +35,9 @@ Tokenizer.prototype.lookahead = function(k) {
     }
 }
 
+/*
+    break a stream of tokens
+*/
 Tokenizer.prototype.tokenize = function() {
     
     this.line = 1;
@@ -125,6 +131,9 @@ Tokenizer.prototype.tokenize = function() {
     return tokens;
 }
 
+/*
+    calculate indent size
+*/
 Tokenizer.prototype.scanIndent = function() {
     
     this.indent = 0;
