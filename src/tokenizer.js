@@ -9,7 +9,7 @@ var Tokenizer = function(source) {
     Lexer.call(this);
 }
 
-Tokenizer.prototype = new Lexer();
+Tokenizer.prototype = Object.create(Lexer.prototype);
 Tokenizer.prototype.consume = function() {
     if (this.c == '\n' || this.c == '\r') {
         this.column = 1;

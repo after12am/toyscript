@@ -14,7 +14,7 @@ var Parser = function(tokens, log) {
     this.log = log || new Log();
 }
 
-Parser.prototype = new Lexer();
+Parser.prototype = Object.create(Lexer.prototype);
 Parser.prototype.consume = function(k) {
     k = k || 1;
     while (k > 0) {
