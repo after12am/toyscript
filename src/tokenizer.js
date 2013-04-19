@@ -31,9 +31,8 @@ Tokenizer.prototype.consume = function() {
 Tokenizer.prototype.lookahead = function(k) {
     if (this.p + k < this.source.length) {
         return this.source[this.p + k];
-    } else {
-        return Token.EOF;
     }
+    return Token.EOF;
 }
 
 /*

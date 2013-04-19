@@ -1,8 +1,3 @@
-// http://www2u.biglobe.ne.jp/~oz-07ams/prog/ecma262r3/
-// https://developer.mozilla.org/en-US/docs/SpiderMonkey/Parser_API
-// https://github.com/mozilla/sweet.js
-// http://esprima.org/demo/parse.html
-
 var Parser = function(tokens, log) {
     this.name = 'Parser';
     this.p = 0;
@@ -13,6 +8,7 @@ var Parser = function(tokens, log) {
     this.inFunction = false;
     this.inIteration = false;
     this.log = log || new Log();
+    Lexer.call(this);
 }
 
 Parser.prototype = Object.create(Lexer.prototype);
@@ -96,22 +92,12 @@ Parser.prototype.lookahead = function(k) {
     return new Token(Token.EOF, '', this.tokens[this.tokens.length - 1].location);
 }
 
-/*
 Parser.prototype.lookback = function(k) {
     if (this.p - k >= 0) {
         return this.tokens[this.p - k];
     }
     return this.tokens[0];
 }
-
-Parser.prototype.updateIndent = function() {
-    if (this.indent_size * this.indent < this.token.text) {
-        this.indent++;
-    } else if (this.indent_size * this.indent > this.token.text) {
-        this.indent--;
-    }
-}
-*/
 
 /*
     14 Program
@@ -170,7 +156,10 @@ Parser.prototype.parseSourceElements = function() {
         FunctionDeclaration
 */
 Parser.prototype.parseSourceElement = function() {
-    return this.parseStatement() || this.parseFunctionDeclaration();
+    switch (this.token.text) {
+    case 'def': return this.parseFunctionDeclaration();
+    }
+    return this.parseStatement();
 }
 
 /*
@@ -345,10 +334,15 @@ Parser.prototype.parseStatementList = function() {
 Parser.prototype.parseEmptyStatement = function() {
     var token = this.token;
     this.expectKind(Token.NEWLINE);
-    
-    return {
-        type: Syntax.EmptyStatement
-    };
+    // empty
+    if (this.lookback(2).kind === 'INDENT') {
+        return {
+            type: Syntax.EmptyStatement
+        };
+    }
+    // new line
+    this.consume();
+    return this.parseStatement();
 }
 
 Parser.prototype.parsePassStatement = function() {
@@ -394,7 +388,12 @@ Parser.prototype.parseIfStatement = function() {
     var indent = this.indent * this.indent_size;
     this.expect('if');
     var test = this.parseExpression();
+    
     var consequent = this.parseStatement();
+    if (consequent && !consequent.expression) {
+        throw new Message(this.token, Message.IllegalIf).toString();
+    }
+    
     if (this.matchKind(Token.INDENT)) {
         if (!this.match(indent)) {
             throw new Message(this.token, Message.IndentSize).toString();
@@ -449,12 +448,14 @@ Parser.prototype.parseIterationStatement = function() {
     if (this.match('for')) {
         this.consume();
         
-        var left = null;
+        var exprs = [];
         while (1) {
             if (this.match('in')) break;
             if (this.match(',')) this.consume();
-            left = this.parseLeftHandSideExpression();
+            exprs.push(this.parseLeftHandSideExpression());
         }
+        var left = exprs[0];
+        
         this.expect('in');
         
         try {
@@ -1629,11 +1630,15 @@ Parser.prototype.parseConditionalExpression = function() {
         this.consume();
         var expr = this.parseAssignmentExpression();
         this.expect('else');
+        var alternate = this.parseAssignmentExpression();
+        if (!alternate) {
+            throw new Message(this.token, Message.IllegalConditionalExpression).toString();
+        }
         return {
             type: Syntax.ConditionalExpression,
             test: expr,
             consequent: consequent,
-            alternate: this.parseAssignmentExpression()
+            alternate: alternate
         };
     }
     

@@ -3,43 +3,43 @@ var Log = function() {
     this.messages = [];
 };
 
-Log.prototype.log = function(text, line) {
+Log.prototype.log = function(location, message) {
     this.messages.push({
         type: 'log',
         text: text,
-        line: line
+        location: location
     });
 };
 
-Log.prototype.info = function(text, line) {
+Log.prototype.info = function(location, message) {
     this.messages.push({
         type: 'info',
         text: text,
-        line: line
+        location: location
     });
 };
 
-Log.prototype.debug = function(text, line) {
+Log.prototype.debug = function(location, message) {
     this.messages.push({
         type: 'debug',
         text: text,
-        line: line
+        location: location
     });
 };
 
-Log.prototype.warn = function(text, line) {
+Log.prototype.warn = function(location, message) {
     this.messages.push({
         type: 'warn',
         text: text,
-        line: line
+        location: location
     });
 };
 
-Log.prototype.error = function(text, line) {
+Log.prototype.error = function(location, message) {
     this.messages.push({
         type: 'error',
         text: text,
-        line: line
+        location: location
     });
 };
 

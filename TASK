@@ -1,12 +1,14 @@
 https://developer.mozilla.org/ja/docs/JavaScript/Reference
+https://developer.mozilla.org/en-US/docs/SpiderMonkey/Parser_API
+http://www2u.biglobe.ne.jp/~oz-07ams/prog/ecma262r3/
+https://github.com/mozilla/sweet.js
+http://esprima.org/demo/parse.html
 
 [tokenizer.js]
 
 * have to implement remain about 7.8.3 Numeric Literals
 * check whether completely implemented 7.8.4 String Literals
 * have to implement 7.8.5 Regular Expression Literals
-* through pass keyword
-* bug of calculating column postion
 
 
 [parser.js]
@@ -19,7 +21,6 @@ https://developer.mozilla.org/ja/docs/JavaScript/Reference
 * have to read carefully 7.8.4 String Literals
 * have to implement 7.8.5 Regular Expression Literals
 * have to read 7.9 Automatic Semicolon Insertion, but I think this is under tested.
-* raise -> throw new Error("");
 * if token is variable, set var identifier
 * able to parse default argument like new Class(a = 2)
 * extends Message function with Error

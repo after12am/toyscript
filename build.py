@@ -17,9 +17,6 @@ header = '''/*
 '''
 
 priorities = [
-    # 'src/log.js',
-    # 'src/token.js',
-    # 'src/parser.js'
 ]
 
 def sources():
