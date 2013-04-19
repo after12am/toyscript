@@ -1590,12 +1590,12 @@ Parser.prototype.parseLogicalORExpression = function() {
 */
 Parser.prototype.parseConditionalExpression = function() {
     
-    var expr = this.parseLogicalORExpression();
+    var consequent = this.parseLogicalORExpression();
     
-    if (this.match('?')) {
+    if (this.match('if')) {
         this.consume();
-        var consequent = this.parseAssignmentExpression();
-        this.expect(':');
+        var expr = this.parseAssignmentExpression();
+        this.expect('else');
         return {
             type: Syntax.ConditionalExpression,
             test: expr,
@@ -1604,7 +1604,7 @@ Parser.prototype.parseConditionalExpression = function() {
         };
     }
     
-    return expr;
+    return consequent;
 }
 
 /*
