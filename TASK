@@ -14,7 +14,6 @@ https://developer.mozilla.org/ja/docs/JavaScript/Reference
 * have to confirm to need to implement 13.2 Creating Function Objects
 * give message argument to expect function
 * stil not implement 12.6 Iteration Statements
-* parseVariableStatement may not call from anywhere
 * have to read carefully 11.1.2 Identifier Reference
 * have to read carefully 7.8.3 Numeric Literals
 * have to read carefully 7.8.4 String Literals

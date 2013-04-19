@@ -254,6 +254,59 @@ Parser.prototype.parseBlock = function() {
 }
 
 /*
+    12.2 Variable statement
+    
+    VariableStatement :
+        var VariableDeclarationList ;
+*/
+Parser.prototype.parseVariableStatement = function() {
+    return {
+        type: Syntax.VariableDeclaration,
+        declarations: this.parseVariableDeclarationList(),
+        kind: 'var'
+    };
+}
+
+/*
+    12.2 Variable statement
+    
+    VariableDeclarationList :
+        VariableDeclaration
+        VariableDeclarationList , VariableDeclaration
+         |
+         v
+        VariableDeclaration
+*/
+Parser.prototype.parseVariableDeclarationList = function() {
+    return [this.parseVariableDeclaration()];
+}
+
+/*
+    12.2 Variable statement
+    
+    VariableDeclaration :
+        Identifier Initialiseropt
+*/
+Parser.prototype.parseVariableDeclaration = function() {
+    return {
+        type: Syntax.VariableDeclarator,
+        id: this.parseIdentifier(),
+        init: this.parseInitialiser()
+    };
+}
+
+/*
+    12.2 Variable statement
+    
+    Initialiser :
+        = AssignmentExpression
+*/
+Parser.prototype.parseInitialiser = function() {
+    this.expect('=');
+    return this.parseAssignmentExpression();
+}
+
+/*
     12.1 Block
     
     StatementList:
@@ -312,6 +365,14 @@ Parser.prototype.parsePassStatement = function() {
         [lookahead ∉ {:, def} ] Expression ;
 */
 Parser.prototype.parseExpressionStatement = function() {
+    
+    // confirm whether Variable Statement
+    if (this.matchKind(Token.IDENTIFIER)) {
+        if (this.lookahead(1).text === '=') {
+            return this.parseVariableStatement();
+        }
+    }
+    
     if (this.match('def') || this.match(':')) return;
     return {
         type: Syntax.ExpressionStatement,
@@ -580,35 +641,6 @@ Parser.prototype.parseExceptStatement = function() {
         guard: null,
         body: this.parseBlock()
     };
-}
-
-/*
-    VariableStatement :
-        var VariableDeclarationList ;
-*/
-Parser.prototype.parseVariableStatement = function() {
-    return this.parseVariableDeclarationList();
-}
-
-/*
-    VariableDeclarationList :
-        VariableDeclaration
-        VariableDeclarationList , VariableDeclaration
-*/
-Parser.prototype.parseVariableDeclarationList = function() {
-    return this.parseVariableDeclaration();
-}
-
-/*
-    VariableDeclaration :
-        Identifier Initialiser
-*/
-Parser.prototype.parseVariableDeclaration = function() {
-    return this.parseInitialiser();
-}
-
-Parser.prototype.parseInitialiser = function() {
-    return this.parseAssignmentExpression();
 }
 
 /*
