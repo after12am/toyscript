@@ -1418,12 +1418,20 @@ Parser.prototype.parseEqualityExpression = function() {
     var expr = this.parseRelationalExpression();
     
     // 11.9.1 - 11.9.2
-    if (this.match('==') || this.match('!=')) {
+    if (this.match('==') || this.match('!=') || this.match('is')) {
+        var operator = '==';
         var token = this.token;
         this.consume();
+        if (token.text === '!=') {
+            operator = token.text;
+        }
+        if (this.match('not')) {
+            this.consume();
+            operator = '!=';
+        }
         return {
             type: Syntax.BinaryExpression,
-            operator: token.text,
+            operator: operator,
             left: expr,
             right: this.parseShiftExpression()
         };
