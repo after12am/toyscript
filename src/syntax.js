@@ -1,4 +1,4 @@
-Syntax = exports.escodegen.Syntax;
+Syntax = escodegen.Syntax;
+Syntax.PassStatement = 'PassStatement';
 Syntax.Block = 'Block';
 Syntax.Line = 'Line';
-Syntax.NEWLINE = 'NewLine';

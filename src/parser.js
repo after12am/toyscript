@@ -198,6 +198,7 @@ Parser.prototype.parseStatement = function() {
     switch (this.token.kind) {
     case Token.COMMENT: return this.parseComment();
     case Token.NEWLINE: return this.parseEmptyStatement();
+    case Token.KEYWORDS.PASS: return this.parsePassStatement();
     case Token.KEYWORDS.IF: return this.parseIfStatement();
     case Token.KEYWORDS.WHILE: return this.parseIterationStatement(); 
     case Token.KEYWORDS.FOR: return this.parseIterationStatement();
@@ -220,8 +221,8 @@ Parser.prototype.parseStatement = function() {
 */
 Parser.prototype.parseBlock = function() {
     
-    var passed = function(p, c) {
-        return p || c.type !== Syntax.NEWLINE;
+    var pass = function(p, c, i) {
+        return p || c.type !== Syntax.EmptyStatement;
     }
     
     this.expect(':');
@@ -237,8 +238,12 @@ Parser.prototype.parseBlock = function() {
     var exprs = this.parseStatementList();
     this.indent--;
     
-    var pass = exprs.reduce(passed, false);
-    if (pass) {
+    if (exprs.reduce(pass, false)) {
+        for (var i in exprs) {
+            if (exprs[i].type === Syntax.PassStatement) {
+                exprs[i].type = Syntax.EmptyStatement;
+            }
+        }
         return {
             type: Syntax.BlockStatement,
             body: exprs
@@ -262,11 +267,6 @@ Parser.prototype.parseStatementList = function() {
     
     while (1) {
         if (this.token.kind === Token.EOF) break;
-        if (this.token.kind === Token.NEWLINE) { // ignore newline token
-            this.consume();
-            continue;
-        }
-        
         if (this.token.kind === Token.INDENT) {
             if (this.token.text < indent) break;
             if (this.token.text > indent) {
@@ -292,11 +292,16 @@ Parser.prototype.parseEmptyStatement = function() {
     var token = this.token;
     this.expectKind(Token.NEWLINE);
     
-    // If switching to below, ignores newline.
-    //return this.parseStatement();
     return {
-        type: Syntax.NEWLINE,
-        value: token.text
+        type: Syntax.EmptyStatement
+    };
+}
+
+Parser.prototype.parsePassStatement = function() {
+    var token = this.token;
+    this.expectKind(Token.KEYWORDS.PASS);
+    return {
+        type: Syntax.PassStatement
     };
 }
 

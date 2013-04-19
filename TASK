@@ -40,7 +40,6 @@ https://developer.mozilla.org/ja/docs/JavaScript/Reference
 
 * Message -> TypeError or like "throw new Error('Unknown expression type: ' + expr.type);"
 * think about except:
-* ignore newline token now. but...
 
 
 [build-in]

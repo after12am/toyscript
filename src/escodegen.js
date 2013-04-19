@@ -1268,7 +1268,7 @@ var escodegen = {};
             break;
 
         case Syntax.EmptyStatement:
-            result = ';';
+            //result = ';';
             break;
 
         case Syntax.ExpressionStatement:

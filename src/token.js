@@ -49,6 +49,7 @@ Token.KEYWORDS.IS = 'is';
 Token.KEYWORDS.NEW = 'new';
 Token.KEYWORDS.NOT = 'not';
 Token.KEYWORDS.OR = 'or';
+Token.KEYWORDS.PASS = 'pass';
 Token.KEYWORDS.RETURN = 'return';
 Token.KEYWORDS.THIS = 'this';
 Token.KEYWORDS.TRY = 'try';
