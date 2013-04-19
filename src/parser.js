@@ -319,9 +319,10 @@ Parser.prototype.parseStatementList = function() {
             continue;
         }
         
-        exprs.push(this.parseStatement());
+        if (expr = this.parseStatement()) {
+            exprs.push(expr);
+        }
     }
-    
     return exprs;
 }
 
@@ -369,10 +370,14 @@ Parser.prototype.parseExpressionStatement = function() {
     }
     
     if (this.match('def') || this.match(':')) return;
-    return {
-        type: Syntax.ExpressionStatement,
-        expression: this.parseExpression()
-    };
+    
+    var expr = this.parseExpression();
+    if (expr) {
+        return {
+            type: Syntax.ExpressionStatement,
+            expression: expr
+        };
+    }
 }
 
 /*
@@ -390,8 +395,10 @@ Parser.prototype.parseIfStatement = function() {
     var test = this.parseExpression();
     
     var consequent = this.parseStatement();
-    if (consequent && !consequent.expression) {
-        throw new Message(this.token, Message.IllegalIf).toString();
+    if (consequent.type === Syntax.ExpressionStatement) {
+        if (consequent && !consequent.expression) {
+            throw new Message(this.token, Message.IllegalIf).toString();
+        }
     }
     
     if (this.matchKind(Token.INDENT)) {
@@ -467,6 +474,39 @@ Parser.prototype.parseIterationStatement = function() {
         this.inIteration = true;
         var body = this.parseStatement();
         this.inIteration = false;
+        
+        /*
+            would parse this: for k, v in d:
+            
+            + notice push token to this.tokens
+        */
+        /*
+        if (exprs.length > 1) {
+            var head = {
+                type: Syntax.VariableDeclaration,
+                declarations: [{
+                    type: Syntax.VariableDeclarator,
+                    id: {
+                        type: Syntax.Identifier,
+                        name: exprs[1].name
+                    },
+                    init: {
+                        type: Syntax.MemberExpression,
+                        computed: true,
+                        object: {
+                            type: Syntax.Identifier,
+                            name: right.name
+                        },
+                        property: {
+                            type: Syntax.Identifier,
+                            name: exprs[0].name
+                        }
+                    }
+                }],
+                kind: 'var'
+            }
+            body.body.unshift(head);
+        }*/
         
         return {
             type: Syntax.ForInStatement,
