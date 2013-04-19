@@ -1,4 +1,5 @@
 var Location = function(line, column) {
+    this.name = 'Location';
     this.line = line;
     this.column = column;
 }

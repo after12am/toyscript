@@ -1,4 +1,5 @@
 var Tokenizer = function(source) {
+    this.name = 'Tokenizer';
     this.line = 1;
     this.source = source || '';
     this.p = 0;

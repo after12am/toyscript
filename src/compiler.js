@@ -1,4 +1,5 @@
 var Compiler = function(source) {
+    this.name = 'Compiler';
     this.source = source;
 }
 

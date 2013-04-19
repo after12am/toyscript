@@ -1,4 +1,5 @@
 var Token = function(kind, text, location) {
+    this.name = 'Token';
     this.kind = kind;
     this.text = text;
     this.location = location;

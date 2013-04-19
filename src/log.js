@@ -1,4 +1,5 @@
 var Log = function() {
+    this.name = 'Log';
     this.messages = [];
 };
 

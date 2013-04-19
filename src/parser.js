@@ -4,6 +4,7 @@
 // http://esprima.org/demo/parse.html
 
 var Parser = function(tokens, log) {
+    this.name = 'Parser';
     this.p = 0;
     this.tokens = tokens;
     this.token = this.tokens[this.p];

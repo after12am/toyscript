@@ -1,5 +1,5 @@
 var Lexer = function() {
-    
+    this.name = 'Lexer';
 }
 
 /*
