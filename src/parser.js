@@ -1749,11 +1749,14 @@ Parser.prototype.parseFunctionDeclaration = function() {
     var params = this.parseFormalParameterList();
     this.inFunction = true;
     var body = this.parseFunctionBody();
+    if (body.body.length === 1 
+     && body.body[0].type === Syntax.EmptyStatement) body.body = [];
+    body.body = params.init.concat(body.body)
     this.inFunction = false;
     return {
         type: Syntax.FunctionDeclaration,
         id: id,
-        params: params,
+        params: params.params,
         body: body
     };
 }
@@ -1764,21 +1767,50 @@ Parser.prototype.parseFunctionDeclaration = function() {
     FormalParameterList :
         Identifier
         FormalParameterList , Identifier
+         |
+         v
+         AssignmentExpression
+         FormalParameterList , AssignmentExpression
 */
 Parser.prototype.parseFormalParameterList = function() {
     
+    var assignmentExpression = function(left, right) {
+        return {
+            type: Syntax.AssignmentExpression,
+            operator: "=",
+            left: left,
+            right: {
+                type: Syntax.LogicalExpression,
+                operator: "||",
+                left: left,
+                right: right
+            }
+        }
+    }
+    
+    var params = [], init = [];
     this.expect('(');
     
-    var params = [];
     while (!this.match(')')) {
         if (this.match(',')) {
             this.consume();
         }
-        params.push(this.parseInitialiser());
+        
+        var left = this.parseIdentifier();
+        params.push(left);
+        
+        if (this.match('=')) {
+            this.consume();
+            var right = this.parsePrimaryExpression();
+            init.push({
+                type: Syntax.ExpressionStatement,
+                expression: assignmentExpression(left, right)
+            });
+        }
     }
     
     this.expect(')');
-    return params;
+    return {params: params, init: init};
 }
 
 /*

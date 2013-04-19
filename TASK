@@ -22,7 +22,6 @@ http://esprima.org/demo/parse.html
 * have to implement 7.8.5 Regular Expression Literals
 * have to read 7.9 Automatic Semicolon Insertion, but I think this is under tested.
 * if token is variable, set var identifier
-* able to parse default argument like new Class(a = 2)
 * extends Message function with Error
     https://developer.mozilla.org/ja/docs/JavaScript/Reference/Global_Objects/Error
     http://ja.wikibooks.org/wiki/JavaScript_%E6%A8%99%E6%BA%96%E3%83%A9%E3%82%A4%E3%83%96%E3%83%A9%E3%83%AA_Error
