@@ -37,22 +37,13 @@ Parser.prototype.matchKind = function(kind) {
 /*
     throw error when argument does not match value of token
 */
-Parser.prototype.expect = function(value, message) {
+Parser.prototype.expect = function(value) {
     if (this.token.text !== value) {
-        if (message) {
-            var data = {
-                "location": this.token.location.toString(), 
-                "message": message
-            };
-            throw "{location} {message}".format(data);
-        }
-        
-        var data = {
+        throw "{location} Unexpected token \"{unexpected}\" expecting \"{expected}\"".format({
             "location": this.token.location.toString(), 
             "unexpected": this.token.text,
             "expected": value
-        };
-        throw "{location} Unexpected token \"{unexpected}\" expecting \"{expected}\"".format(data);
+        });
     }
     this.consume();
 }
@@ -60,22 +51,13 @@ Parser.prototype.expect = function(value, message) {
 /*
     throw error when argument does not match kind of token
 */
-Parser.prototype.expectKind = function(value, message) {
+Parser.prototype.expectKind = function(value) {
     if (this.token.kind !== value) {
-        if (message) {
-            var data = {
-                "location": this.token.location.toString(), 
-                "message": message
-            };
-            throw "{location} {message}".format(data);
-        }
-        
-        var data = {
+        throw "{location} Unexpected token \"{unexpected}\" expecting \"{expected}\"".format({
             "location": this.token.location.toString(), 
             "unexpected": this.token.kind,
             "expected": value
-        };
-        throw "{location} Unexpected token \"{unexpected}\" expecting \"{expected}\"".format(data);
+        });
     }
     this.consume();
 }
@@ -125,9 +107,7 @@ Parser.prototype.parseProgram = function() {
         SourceElements SourceElement
 */
 Parser.prototype.parseSourceElements = function() {
-    
     var nodes = [];
-    
     while (1) {
         // reset indent
         this.expect(0);
@@ -139,7 +119,6 @@ Parser.prototype.parseSourceElements = function() {
         if (this.matchKind(Token.NEWLINE)) this.consume();
         if (this.matchKind(Token.EOF)) break;
     }
-    
     return nodes;
 }
 
@@ -204,10 +183,6 @@ Parser.prototype.parseStatement = function() {
 */
 Parser.prototype.parseBlock = function() {
     
-    var pass = function(p, c, i) {
-        return p || c.type !== Syntax.EmptyStatement;
-    }
-    
     this.expect(':');
     
     /*
@@ -235,6 +210,13 @@ Parser.prototype.parseBlock = function() {
     */
     else {
         exprs = [this.parseStatement()];
+    }
+    
+    /*
+        whether exprs has EmptyStatement
+    */
+    function pass(p, c, i) {
+        return p || c.type !== Syntax.EmptyStatement;
     }
     
     if (exprs.reduce(pass, false)) {
@@ -265,10 +247,25 @@ Parser.prototype.parseStatementList = function() {
     var indent = this.indent * this.indent_size;
     
     while (1) {
+        /*
+            would parse this:
+            
+                if a:
+                    a = 1
+                a = 1
+                
+                if a: a = 1
+                a = 2
+                
+                if a:
+                    a = 1
+                    
+                    a = 2
+                    a = 2
+        */
         if (this.matchKind(Token.NEWLINE)) {
-            var token = this.lookback(1);
             this.consume();
-            if (token.kind === Token.INDENT) {
+            if (this.lookback(2).kind === Token.INDENT) {
                 exprs.push({
                     type: Syntax.PassStatement
                 });
@@ -413,6 +410,11 @@ Parser.prototype.parseIfStatement = function() {
     
     this.expect('if');
     var test = this.parseExpression();
+    
+    if (!this.match(':')) {
+        throw new Message(this.token, Message.IllegalIf).toString();
+    }
+    
     var consequent = this.parseStatement();
     if (consequent.type === Syntax.ExpressionStatement) {
         if (consequent && !consequent.expression) {
