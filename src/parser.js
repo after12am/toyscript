@@ -267,6 +267,15 @@ Parser.prototype.parseStatementList = function() {
     var exprs = [], expr = null;
     var indent = this.indent * this.indent_size;
     while (1) {
+        if (this.matchKind(Token.NEWLINE)) {
+            var token = this.lookback(1);
+            this.consume();
+            if (token.kind === Token.INDENT) {
+                exprs.push({
+                    type: Syntax.PassStatement
+                });
+            }
+        }
         if (this.matchKind(Token.EOF)) break;
         if (this.matchKind(Token.INDENT)) {
             if (this.token.text < indent) break;
@@ -275,7 +284,7 @@ Parser.prototype.parseStatementList = function() {
             continue;
         }
         if (!(expr = this.parseStatement())) {
-            if (this.matchKind(Token.NEWLINE)) this.consume();
+            
             continue;
         }
         exprs.push(expr);
