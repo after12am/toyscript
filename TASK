@@ -5,14 +5,7 @@ https://github.com/mozilla/sweet.js
 http://esprima.org/demo/parse.html
 
 
-+ bug of indent
 
-    if a:
-        a = 1
-    a = 1
-    
-    if a:
-        a = 1
 
     a = 1
 

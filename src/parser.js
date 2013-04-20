@@ -244,6 +244,34 @@ Parser.prototype.parseBlock = function() {
 }
 
 /*
+    12.1 Block
+    
+    StatementList:
+        Statement
+        StatementList Statement
+*/
+Parser.prototype.parseStatementList = function() {
+    
+    var exprs = [], expr = null;
+    var indent = this.indent * this.indent_size;
+    
+    while (1) {
+        if (this.matchKind(Token.NEWLINE)) this.consume();
+        if (this.matchKind(Token.EOF)) break;
+        if (this.matchKind(Token.INDENT)) {
+            if (this.token.text < indent) break;
+            if (this.token.text > indent) throw new Message(this.token, Message.IndentSize).toString();
+            this.consume();
+            continue;
+        }
+        if (!(expr = this.parseStatement())) continue;
+        exprs.push(expr);
+    }
+    
+    return exprs;
+}
+
+/*
     12.2 Variable statement
     
     VariableStatement :
@@ -294,36 +322,6 @@ Parser.prototype.parseVariableDeclaration = function() {
 Parser.prototype.parseInitialiser = function() {
     this.expect('=');
     return this.parseAssignmentExpression();
-}
-
-/*
-    12.1 Block
-    
-    StatementList:
-        Statement
-        StatementList Statement
-*/
-Parser.prototype.parseStatementList = function() {
-    
-    var exprs = [];
-    var indent = this.indent * this.indent_size;
-    
-    while (1) {
-        if (this.token.kind === Token.EOF) break;
-        if (this.token.kind === Token.INDENT) {
-            if (this.token.text < indent) break;
-            if (this.token.text > indent) {
-                throw new Message(this.token, Message.IndentSize).toString();
-            }
-            this.consume();
-            continue;
-        }
-        
-        if (expr = this.parseStatement()) {
-            exprs.push(expr);
-        }
-    }
-    return exprs;
 }
 
 /*
