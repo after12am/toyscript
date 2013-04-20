@@ -104,13 +104,13 @@ Parser.prototype.lookback = function(k) {
         SourceElements
 */
 Parser.prototype.parseProgram = function() {
+    this.p = 0;
     for (var i = 1; i < this.tokens.length; i++) {
-        if (this.tokens[i].kind === Token.INDENT) {
-            this.indent_size = this.tokens[i].text;
+        if (this.lookahead(i).kind === Token.INDENT && this.lookahead(i).text > 0) {
+            this.indent_size = this.lookahead(i).text;
             break;
         }
     }
-    this.p = 0;
     return {
         type: Syntax.Program,
         body: this.parseSourceElements()
@@ -129,18 +129,16 @@ Parser.prototype.parseSourceElements = function() {
     var nodes = [];
     
     while (1) {
-        // the first token would be Token.Indent. 
-        if (this.lookahead(1).kind === Token.EOF) {
-            break;
-        }
         
         // reset indent
         this.expect(0);
         this.indent = 0;
-        nodes.push(this.parseSourceElement());
+        var node = this.parseSourceElement();
+        if (node) nodes.push(node);
         
         // line terminator of eof
         if (this.matchKind(Token.NEWLINE)) this.consume();
+        if (this.matchKind(Token.EOF)) break;
     }
     
     return nodes;
@@ -268,9 +266,7 @@ Parser.prototype.parseStatementList = function() {
     
     var exprs = [], expr = null;
     var indent = this.indent * this.indent_size;
-    
     while (1) {
-        if (this.matchKind(Token.NEWLINE)) this.consume();
         if (this.matchKind(Token.EOF)) break;
         if (this.matchKind(Token.INDENT)) {
             if (this.token.text < indent) break;
@@ -278,7 +274,10 @@ Parser.prototype.parseStatementList = function() {
             this.consume();
             continue;
         }
-        if (!(expr = this.parseStatement())) continue;
+        if (!(expr = this.parseStatement())) {
+            if (this.matchKind(Token.NEWLINE)) this.consume();
+            continue;
+        }
         exprs.push(expr);
     }
     
