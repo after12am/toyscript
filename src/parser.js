@@ -1,13 +1,11 @@
-var Parser = function(tokens, log) {
+var Parser = function(tokens) {
     this.name = 'Parser';
     this.p = 0;
+    this.state = false;
+    this.token = tokens[0];
     this.tokens = tokens;
-    this.token = this.tokens[this.p];
-    this.indent_size = 4;
     this.indent = 0;
-    this.inFunction = false;
-    this.inIteration = false;
-    this.log = log || new Log();
+    this.indent_size = 4; // default of indent size for parsing
 }
 
 Parser.prototype.consume = function(k) {
@@ -86,6 +84,7 @@ Parser.prototype.lookback = function(k) {
 */
 Parser.prototype.parseProgram = function() {
     this.p = 0;
+    // update indent size for parsing
     for (var i = 1; i < this.tokens.length; i++) {
         if (this.lookahead(i).kind === Token.INDENT 
          && this.lookahead(i).text > 0) {
@@ -461,9 +460,10 @@ Parser.prototype.parseIterationStatement = function() {
             throw new Message(this.token, Message.IndentWhile).toString();
         }
         
-        this.inIteration = true;
+        var _state = this.state;
+        this.state = State.InIteration;
         var body = this.parseStatement();
-        this.inIteration = false;
+        this.state = _state;
         
         return {
             type: Syntax.WhileStatement,
@@ -486,9 +486,10 @@ Parser.prototype.parseIterationStatement = function() {
         this.expect('in');
         
         right = this.parseExpression();
-        this.inIteration = true;
+        var _state = this.state;
+        this.state = State.InIteration;
         body = this.parseStatement()
-        this.inIteration = false;
+        this.state = _state;
         
         if (!right || !body) {
             throw new Message(this.token, Message.IndentFor).toString();
@@ -636,7 +637,7 @@ Parser.prototype.parseContinueStatement = function() {
         throw new Message(this.token, Message.IllegalContinue).toString();
     }
     
-    if (!this.inIteration) {
+    if (this.state !== State.InIteration) {
         throw new Message(this.token, Message.IllegalContinuePosition).toString();
     }
     
@@ -660,7 +661,7 @@ Parser.prototype.parseBreakStatement = function() {
         throw new Message(this.token, Message.IllegalBreak).toString();
     }
     
-    if (!this.inIteration) {
+    if (this.state !== State.InIteration) {
         throw new Message(this.token, Message.IllegalBreakPosition).toString();
     }
     
@@ -679,7 +680,7 @@ Parser.prototype.parseReturnStatement = function() {
     
     this.consume();
     
-    if (!this.inFunction) {
+    if (this.state !== State.InFunction) {
         throw new Message(this.token, Message.IllegalReturn).toString();
     }
     
@@ -1250,9 +1251,9 @@ Parser.prototype.parseFunctionExpression = function() {
             }
             this.expect(')');
             
-            this.inFunction = true;
+            this.state = State.InFunction;
             var body = this.parseBlock();
-            this.inFunction = false;
+            this.state = false;
             
             var idents = [];
             // walk the subtree and find identifier node
@@ -1939,9 +1940,9 @@ Parser.prototype.parseFunctionDeclaration = function() {
     var id = this.parseIdentifier();
     var params = this.parseFormalParameterList();
     
-    this.inFunction = true;
+    this.state = State.InFunction;
     var body = this.parseFunctionBody();
-    this.inFunction = false;
+    this.state = false;
     
     if (body.body.length === 1 
      && body.body[0].type === Syntax.EmptyStatement) body.body = [];
