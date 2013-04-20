@@ -1568,11 +1568,42 @@ Parser.prototype.parseRelationalExpression = function() {
     if (this.match('in')) {
         var token = this.token;
         this.consume();
+        var object = this.parseShiftExpression();
+        var operator = '!==';
+        
+        /*
+            if not 0 in [1]:
+                console.log(1)
+        */
+        if (expr.type === Syntax.UnaryExpression) {
+            operator = '===';
+            expr = expr.argument;
+        }
         return {
             type: Syntax.BinaryExpression,
-            operator: token.text,
-            left: expr,
-            right: this.parseShiftExpression()
+            operator: operator,
+            left: {
+                type: Syntax.CallExpression,
+                callee: {
+                    type: Syntax.MemberExpression,
+                    computed: false,
+                    object: object,
+                    property: {
+                        type: Syntax.Identifier,
+                        name: "indexOf"
+                    }
+                },
+                arguments: [expr]
+            },
+            right: {
+                type: Syntax.UnaryExpression,
+                operator: "-",
+                argument: {
+                    type: Syntax.Literal,
+                    value: 1,
+                    raw: "1"
+                }
+            }
         };
     }
     
