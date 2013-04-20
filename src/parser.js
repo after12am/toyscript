@@ -1521,16 +1521,90 @@ Parser.prototype.parseRelationalExpression = function() {
     
     var expr = this.parseShiftExpression();
     
-    // 11.8.1, 11.8.2, 11.8.3, 11.8.4, 11.8.6
-    while (this.match('<') || this.match('>') || this.match('<=') || this.match('>=') || this.match('instanceof')) {
+    // 11.8.1, 11.8.2, 11.8.3, 11.8.4, 11.8.6, 11.8.7
+    while (this.match('<') || this.match('>') 
+        || this.match('<=') || this.match('>=') 
+        || this.match('instanceof')
+        || this.match('in')) {
+        var right;
+        var in_operator = this.match('in');
         var token = this.token;
         this.consume();
-        expr = {
-            type: Syntax.BinaryExpression,
-            operator: token.text,
-            left: expr,
-            right: this.parseRelationalExpression()
-        };
+        
+        /*
+            if "a" in a = {"a": 1}:
+                console.log('found')
+        */
+        if (in_operator && this.lookahead(1).text === '=') {
+            right = this.parseAssignmentExpression();
+        } else {
+            right = this.parseRelationalExpression();
+        }
+        
+        /*
+            if not "a" in {"a": 1}:
+                console.log('not found')
+        */
+        if (in_operator && expr.type === Syntax.UnaryExpression) {
+            expr = {
+                type: Syntax.UnaryExpression,
+                operator: "!",
+                argument: {
+                    type: Syntax.BinaryExpression,
+                    operator: token.text,
+                    left: expr.argument,
+                    right: right
+                }
+            }
+        }
+        /*
+            if 1 in [1, 2, 3]:
+                console.log('found')
+            
+            if not 0 in [1, 2, 3]:
+                console.log('not found')
+        */
+        else if (in_operator && right.type === Syntax.ArrayExpression) {
+            var operator = '!==';
+            if (expr.type === Syntax.UnaryExpression) {
+                operator = '===';
+                expr = expr.argument;
+            }
+            expr = {
+                type: Syntax.BinaryExpression,
+                operator: operator,
+                left: {
+                    type: Syntax.CallExpression,
+                    callee: {
+                        type: Syntax.MemberExpression,
+                        computed: false,
+                        object: right,
+                        property: {
+                            type: Syntax.Identifier,
+                            name: "indexOf"
+                        }
+                    },
+                    arguments: [expr]
+                },
+                right: {
+                    type: Syntax.UnaryExpression,
+                    operator: "-",
+                    argument: {
+                        type: Syntax.Literal,
+                        value: 1,
+                        raw: "1"
+                    }
+                }
+            };
+        }
+        else {
+            expr = {
+                type: Syntax.BinaryExpression,
+                operator: token.text,
+                left: expr,
+                right: right
+            };
+        }
     }
     
     // 11.4.3 The typeof Operator
@@ -1561,49 +1635,6 @@ Parser.prototype.parseRelationalExpression = function() {
             operator: '===',
             left: left,
             right: this.parseRelationalExpression()
-        };
-    }
-    
-    // 11.8.7
-    if (this.match('in')) {
-        var token = this.token;
-        this.consume();
-        var object = this.parseShiftExpression();
-        var operator = '!==';
-        
-        /*
-            if not 0 in [1]:
-                console.log(1)
-        */
-        if (expr.type === Syntax.UnaryExpression) {
-            operator = '===';
-            expr = expr.argument;
-        }
-        return {
-            type: Syntax.BinaryExpression,
-            operator: operator,
-            left: {
-                type: Syntax.CallExpression,
-                callee: {
-                    type: Syntax.MemberExpression,
-                    computed: false,
-                    object: object,
-                    property: {
-                        type: Syntax.Identifier,
-                        name: "indexOf"
-                    }
-                },
-                arguments: [expr]
-            },
-            right: {
-                type: Syntax.UnaryExpression,
-                operator: "-",
-                argument: {
-                    type: Syntax.Literal,
-                    value: 1,
-                    raw: "1"
-                }
-            }
         };
     }
     
