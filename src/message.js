@@ -1,45 +1,34 @@
-var Message = function(token, message) {
-    this.token = token;
-    this.message = message;
+var Message = {
+    UnknownToken:'Unknown token',
+    UnexpectedToken:'Unexpected token',
+    UnexpectedString:'Unexpected string',
+    IllegalReservedIdent:'Variables starting with __ are reserved',
+    IllegalIdent:'Identifier can not start with numeric',
+    IllegalComment:'Illegal comment',
+    IllegalBlock:'Block statement must have one statement at least',
+    IllegalFor:'Illegal for statement',
+    IllegalWhile:'Illegal while statement',
+    IllegalIf:'Illegal if statement',
+    IllegalContinue:'Continue statement can not have label',
+    IllegalContinuePosition:'Continue statement have to be declared in iteration',
+    IllegalBreak:'Break statement can not have label',
+    IllegalBreakPosition:'Break statement have to be declared in iteration',
+    IllegalReturn:'Return statement has to be contained in function',
+    IllegalReturnArgument:'Return argument has to be one',
+    IllegalRaise:'Illegal raise statement',
+    IllegalRaiseArgument: 'Raise argument has to be one',
+    IllegalExcept:'Illegal except statement',
+    IllegalFinally:'Illegal finally statement',
+    IllegalConditionalExpression:'Illegal conditional expression',
+    IllegalIndentSize:'Indent size may be incorrect',
+    IllegalArgumentList:'Arguments maybe includes newline',
+    IllegalPostfixIncrement:'Postfix increment operator is only for variable',
+    IllegalPostfixDecrement:'Postfix decrement operator is only for variable',
+    IllegalPrefixIncrement:'Prefix increment operator is only for variable',
+    IllegalPrefixDecrement:'Prefix decrement operator is only for variable',
+    IllegalMultiplicativeExpression:'Illegal multiplicative expression',
+    IllegalShiftExpression:'Illegal shift expression',
+    IllegalRelationalExpression:'Illegal relational expression',
+    IllegalIsinstance:'arguments of isinstance build-in function has to be two',
+    IllegalTypeof:'argument of type build-in function has to be one'
 };
-
-Message.prototype.toString = function() {
-    var data = {
-        "location": this.token.location.toString(), 
-        "message": this.message
-    };
-    return "{location} {message}".format(data);
-};
-
-Message.ReservedIdent = 'Variables starting with __ are reserved';
-Message.UnknownToken = 'Unknown token';
-Message.UnexpectedToken = 'Unexpected token';
-Message.UnexpectedString = 'Unexpected string';
-Message.IllegalIdent = 'Identifier can not start with numeric';
-Message.IllegalComment = 'Illegal comment';
-Message.IllegalBlock = 'Block statement must have one statement at least';
-Message.IllegalFor = 'Illegal for statement';
-Message.IllegalWhile = 'Illegal while statement';
-Message.IllegalIf = 'Illegal if statement';
-Message.IllegalContinue = 'Continue statement can not have label';
-Message.IllegalContinuePosition = 'Continue statement have to be declared in iteration';
-Message.IllegalBreak = 'Break statement can not have label';
-Message.IllegalBreakPosition = 'Break statement have to be declared in iteration';
-Message.IllegalReturn = 'Return statement has to be contained in function';
-Message.IllegalReturnArgument = 'Return argument has to be one';
-Message.IllegalRaise = 'Illegal raise statement';
-Message.IllegalRaiseArgument =  'Raise argument has to be one';
-Message.IllegalExcept = 'Illegal except statement';
-Message.IllegalFinally = 'Illegal finally statement';
-Message.IllegalConditionalExpression = 'Illegal conditional expression';
-Message.IllegalIndentSize = 'Indent size may be incorrect';
-Message.IllegalArgumentList = 'Arguments maybe includes newline';
-Message.IllegalPostfixIncrement = 'Postfix increment operator is only for variable';
-Message.IllegalPostfixDecrement = 'Postfix decrement operator is only for variable';
-Message.IllegalPrefixIncrement = 'Prefix increment operator is only for variable';
-Message.IllegalPrefixDecrement = 'Prefix decrement operator is only for variable';
-Message.IllegalMultiplicativeExpression = 'Illegal multiplicative expression';
-Message.IllegalShiftExpression = 'Illegal shift expression';
-Message.IllegalRelationalExpression = 'Illegal relational expression';
-Message.IllegalIsinstance = 'arguments of isinstance build-in function has to be two';
-Message.IllegalTypeof = 'argument of type build-in function has to be one';

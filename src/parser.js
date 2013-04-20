@@ -37,11 +37,12 @@ Parser.prototype.matchKind = function(kind) {
 */
 Parser.prototype.expect = function(value) {
     if (this.token.text !== value) {
-        throw "{location} Unexpected token \"{unexpected}\" expecting \"{expected}\"".format({
-            "location": this.token.location.toString(), 
-            "unexpected": this.token.text,
-            "expected": value
-        });
+        throw new Error("{location} {message} {unexpected} expecting {expected}".format({
+            location: this.token.location.toString(), 
+            message: Message.UnexpectedToken,
+            unexpected: this.token.text,
+            expected: value
+        }));
     }
     this.consume();
 }
@@ -51,11 +52,12 @@ Parser.prototype.expect = function(value) {
 */
 Parser.prototype.expectKind = function(value) {
     if (this.token.kind !== value) {
-        throw "{location} Unexpected token \"{unexpected}\" expecting \"{expected}\"".format({
-            "location": this.token.location.toString(), 
-            "unexpected": this.token.kind,
-            "expected": value
-        });
+        throw new Error("{location} {message} {unexpected} expecting {expected}".format({
+            location: this.token.location.toString(), 
+            message: Message.UnexpectedToken,
+            unexpected: this.token.kind,
+            expected: value
+        }));
     }
     this.consume();
 }
