@@ -56,13 +56,10 @@ Tokenizer.prototype.tokenize = function() {
             continue;
         }
         
-        if (this.c == '\n' || this.c == '\r') {
-            if (token = this.scanLineTerminator()) {
-                tokens.push(token);
-            }
-            if (token = this.scanIndent()) {
-                tokens.push(token);
-            }
+        if (this.matchLineTerminator(this.c)) {
+            if (token = this.scanLineTerminator()) tokens.push(token);
+            if (token = this.scanIndent()) tokens.push(token);
+            this.line++;
             continue;
         }
         
@@ -159,7 +156,6 @@ Tokenizer.prototype.scanIndent = function() {
 Tokenizer.prototype.scanLineTerminator = function() {
     
     var c = this.c;
-    this.line++;
     this.consume();
     
     if ((c + this.lookahead(1)) == '\r\n') {
