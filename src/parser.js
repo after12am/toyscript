@@ -1201,8 +1201,16 @@ Parser.prototype.parseArgumentList = function() {
 */
 Parser.prototype.parseFunctionExpression = function() {
     
-    // lambda expression
-    // (2): x * x
+    /*
+        lambda expression
+            
+            (2): x * x
+             |
+             v
+            (function (x) {
+            	return x * x;
+            })(2);
+    */
     if (this.match('(')) {
         
         var k = 1;
@@ -1212,19 +1220,61 @@ Parser.prototype.parseFunctionExpression = function() {
         }
         
         if (this.lookahead(++k).text === ':') {
-            var params = this.parseFormalParameterList();
-            this.expect(':');
+            
+            this.expect('(');
+            var arguments = [];
+            while (!this.match(')')) {
+                if (this.match(',')) this.consume();
+                arguments.push(this.parsePrimaryExpression());
+            }
+            this.expect(')');
             
             this.inFunction = true;
-            var body = this.parseExpression();
+            var body = this.parseBlock();
             this.inFunction = false;
             
+            var idents = [];
+            var subtree = body.body[0].expression;
+            // walk the subtree and find identifier node
+            (function walk(node) {
+                for (var i in node) {
+                    if (typeof node[i] !== 'object') continue;
+                    if (node[i].type === Syntax.Identifier
+                     && idents.indexOf(node[i].name) === -1) {
+                        idents.push(node[i].name);
+                    }
+                    walk(node[i]);
+                }
+            })(subtree)
+            
+            var params = [];
+            for (var i in idents) {
+                params.push({
+                    type: Syntax.Identifier,
+                    name: idents[i]
+                });
+            }
+            
             return {
-                type: Syntax.FunctionExpression,
-                id: null,
-                params: params,
-                body: body
-            };
+                type: Syntax.CallExpression,
+                callee: {
+                    type: Syntax.FunctionExpression,
+                    id: null,
+                    params: params,
+                    defaults: [],
+                    body: {
+                        type: Syntax.BlockStatement,
+                        body: [{
+                            type: Syntax.ReturnStatement,
+                            argument: body.body[0].expression
+                        }]
+                    },
+                    rest: null,
+                    generator: false,
+                    expression: false
+                },
+                arguments: arguments
+            }
         }
     }
 }
