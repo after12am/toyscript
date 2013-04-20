@@ -2,18 +2,14 @@
     break a stream of token
 */
 exports.tokenize = function(source) {
-    var tokens = [];
-    var tokenizer = new Tokenizer(source);
-    tokens = tokenizer.tokenize();
-    return tokens;
+    return new Tokenizer(source).tokenize();
 }
 
 /*
     create abstract syntax tree from tokens
 */
 exports.parse = function(source) {
-    var tokens = exports.tokenize(source);
-    return new Parser(tokens).parse();
+    return new Parser(exports.tokenize(source)).parse();
 }
 
 /*

@@ -1,13 +1,9 @@
-https://developer.mozilla.org/ja/docs/JavaScript/Reference
-https://developer.mozilla.org/en-US/docs/SpiderMonkey/Parser_API
-http://www2u.biglobe.ne.jp/~oz-07ams/prog/ecma262r3/
-https://github.com/mozilla/sweet.js
-http://esprima.org/demo/parse.html
+[bug]
+
++ different result 3 >>> 2 >>> 1. babe.js parses as 3 >>> (2 >>> 1)
 
 
-
-
-    a = 1
+[specification]
 
 + 7.8.3 Numeric Literals
 + 7.8.4 String Literals
@@ -16,14 +12,27 @@ http://esprima.org/demo/parse.html
 + 10 Execution Contexts
 + 10.1.1 Function Function Objects
 + 10.1.4 Scope Chain and Identifier Resolution
+    if a:
+        a = 1
+        a = 2
+     |
+     v
+    if (a) {
+        var a = 1;
+        var a = 2;
+    }
+    always　declaration as var expression
+    
 + 13.2 Creating Function Objects
 + 15 Native ECMAScript Objects
-+ to consider about default argument: a(arg = 2)
+
+
+[additional]
+
++ class statement
 + to consider whether or not I plan to use underscore.js
 * to consider giving message argument to expect function
-+ would not be parsed: for k, v in {a: 2}
-+ would be parsed: if a: a = 1
-+ would not parse: try statement
+
 + define const variables
 
     Undefined	"undefined"
@@ -41,3 +50,16 @@ http://esprima.org/demo/parse.html
 
       https://developer.mozilla.org/ja/docs/JavaScript/Reference/Global_Objects/Error
       http://ja.wikibooks.org/wiki/JavaScript_%E6%A8%99%E6%BA%96%E3%83%A9%E3%82%A4%E3%83%96%E3%83%A9%E3%83%AA_Error
+
++ change internal design
+    http://ja.wikipedia.org/wiki/%E5%AD%97%E5%8F%A5%E8%A7%A3%E6%9E%90
+    http://ja.wikipedia.org/wiki/%E6%A7%8B%E6%96%87%E8%A7%A3%E6%9E%90
+
+
+
+
+https://developer.mozilla.org/ja/docs/JavaScript/Reference
+https://developer.mozilla.org/en-US/docs/SpiderMonkey/Parser_API
+http://www2u.biglobe.ne.jp/~oz-07ams/prog/ecma262r3/
+https://github.com/mozilla/sweet.js
+http://esprima.org/demo/parse.html

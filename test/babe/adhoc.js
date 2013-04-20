@@ -14,7 +14,7 @@ try {
     console.log(script);
     
     console.log("\n=========== eval ===========");
-    eval(script)
+    console.log('result: ', eval(script));
     
 } catch (e) {
     console.log(e);
