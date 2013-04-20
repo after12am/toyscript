@@ -1330,8 +1330,10 @@ Parser.prototype.parseUnaryExpression = function() {
         var token = this.token;
         this.consume();
         var expr = this.parseUnaryExpression();
-        // may have to handle exception here
-        // example, {} + {}, {} - {}
+        /*
+            may have to handle exception here
+            example, {} + {}, {} - {}
+        */
         return {
             type: Syntax.UnaryExpression,
             operator: token.text,
@@ -1381,7 +1383,7 @@ Parser.prototype.parseMultiplicativeExpression = function() {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
-            right: this.parseUnaryExpression()
+            right: this.parseMultiplicativeExpression()
         };
     }
     
@@ -1408,7 +1410,7 @@ Parser.prototype.parseAdditiveExpression = function() {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
-            right: this.parseUnaryExpression()
+            right: this.parseAdditiveExpression()
         };
     }
     
@@ -1498,7 +1500,7 @@ Parser.prototype.parseRelationalExpression = function() {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
-            right: this.parseShiftExpression()
+            right: this.parseRelationalExpression()
         };
     }
     
@@ -1517,7 +1519,7 @@ Parser.prototype.parseRelationalExpression = function() {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
-            right: this.parseShiftExpression()
+            right: this.parseRelationalExpression()
         };
     }
     
@@ -1548,7 +1550,7 @@ Parser.prototype.parseRelationalExpression = function() {
             type: Syntax.BinaryExpression,
             operator: '===',
             left: left,
-            right: this.parseShiftExpression()
+            right: this.parseRelationalExpression()
         };
     }
     
@@ -1560,7 +1562,7 @@ Parser.prototype.parseRelationalExpression = function() {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
-            right: this.parseShiftExpression()
+            right: this.parseRelationalExpression()
         };
     }
     
