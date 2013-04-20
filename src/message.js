@@ -11,6 +11,7 @@ Message.prototype.toString = function() {
     return "{location} {message}".format(data);
 };
 
+Message.ReservedIdent = 'variable starting with __ is reserved';
 Message.UnknownToken = 'Unknown token';
 Message.UnexpectedToken = 'Unexpected token';
 Message.IllegalIdent = 'Illegal identifier';
@@ -34,10 +35,10 @@ Message.IllegalConditionalExpression = 'Illegal conditional expression';
 Message.IndentSize = 'Indent size may be incorrect';
 Message.IllegalIdentifier = 'Illegal identifier';
 Message.IllegalArgumentList = 'Arguments maybe includes newline';
-Message.IllegalPostfixIncrement = 'Postfix increment operator is only for identifier';
-Message.IllegalPostfixDecrement = 'Postfix decrement operator is only for identifier';
-Message.IllegalPrefixIncrement = 'Prefix increment operator is only for identifier';
-Message.IllegalPrefixDecrement = 'Prefix decrement operator is only for identifier';
+Message.IllegalPostfixIncrement = 'Postfix increment operator is only for variable';
+Message.IllegalPostfixDecrement = 'Postfix decrement operator is only for variable';
+Message.IllegalPrefixIncrement = 'Prefix increment operator is only for variable';
+Message.IllegalPrefixDecrement = 'Prefix decrement operator is only for variable';
 Message.IllegalMultiplicativeExpression = 'Illegal multiplicative expression';
 Message.IllegalShiftExpression = 'Illegal shift expression';
 Message.IllegalRelationalExpression = 'Illegal relational expression';

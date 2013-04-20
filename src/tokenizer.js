@@ -339,7 +339,12 @@ Tokenizer.prototype.scanIdent = function() {
         break;
     }
     
-    return new Token(Token.IDENTIFIER, ident, new Location(this.line, this.column));
+    var token = new Token(Token.IDENTIFIER, ident, new Location(this.line, this.column));
+    if (ident.substring(0, 2) === '__') {
+        throw new Message(token, Message.ReservedIdent).toString();
+    }
+    
+    return token;
 }
 
 /*

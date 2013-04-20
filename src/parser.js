@@ -485,13 +485,28 @@ Parser.prototype.parseIterationStatement = function() {
         var body = this.parseStatement();
         this.inIteration = false;
         
+        
         /*
-            would parse this: for k, v in d:
-            
-            + notice push token to this.tokens
+            would parse this: for k, v in a = {'arg': 1}:
         */
-        /*
-        if (exprs.length > 1) {
+        if (exprs.length === 2) {
+            
+            /*
+                part of :
+                    a = {'arg': 1}
+            */
+            if (right.type !== Syntax.AssignmentExpression) {
+                right = {
+                    type: "AssignmentExpression",
+                    operator: "=",
+                    left: {
+                        type: "Identifier",
+                        name: "__obj"
+                    },
+                    right: right
+                }
+            }
+            
             var head = {
                 type: Syntax.VariableDeclaration,
                 declarations: [{
@@ -505,7 +520,7 @@ Parser.prototype.parseIterationStatement = function() {
                         computed: true,
                         object: {
                             type: Syntax.Identifier,
-                            name: right.name
+                            name: right.left.name
                         },
                         property: {
                             type: Syntax.Identifier,
@@ -516,7 +531,7 @@ Parser.prototype.parseIterationStatement = function() {
                 kind: 'var'
             }
             body.body.unshift(head);
-        }*/
+        }
         
         return {
             type: Syntax.ForInStatement,
