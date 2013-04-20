@@ -37,19 +37,6 @@ var escodegen = {};
 
 (function (factory, global) {
     'use strict';
-
-    // Universal Module Definition (UMD) to support AMD, CommonJS/Node.js,
-    // and plain browser loading,
-    
-    // if (typeof define === 'function' && define.amd) {
-    //     define(['exports'], function (exports) {
-    //         factory(exports, global);
-    //     });
-    // } else if (typeof exports !== 'undefined') {
-    //     factory(exports, global);
-    // } else {
-    //     factory((global.escodegen = {}), global);
-    // }
     
     factory((escodegen = {}), global);
     

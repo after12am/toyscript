@@ -231,32 +231,32 @@ Tokenizer.prototype.scanReservedWord = function() {
         return token;
     }
     
-    var ident = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3);
-    if (ident === 'None') {
+    var reserved = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3);
+    if (reserved === 'None') {
         this.consume();
         this.consume();
         this.consume();
         this.consume();
-        return new Token(Token.KEYWORDS.NONE, ident, new Location(this.line, this.column));
+        return new Token(Token.KEYWORDS.NONE, reserved, new Location(this.line, this.column));
     }
     
-    var ident = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3);
-    if (ident === 'true') {
+    var reserved = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3);
+    if (reserved === 'true') {
         this.consume();
         this.consume();
         this.consume();
         this.consume();
-        return new Token(Token.BOOLEAN, ident, new Location(this.line, this.column));
+        return new Token(Token.BOOLEAN, reserved, new Location(this.line, this.column));
     }
     
-    var ident = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3) + this.lookahead(4);
-    if (ident === 'false') {
+    var reserved = this.c + this.lookahead(1) + this.lookahead(2) + this.lookahead(3) + this.lookahead(4);
+    if (reserved === 'false') {
         this.consume();
         this.consume();
         this.consume();
         this.consume();
         this.consume();
-        return new Token(Token.BOOLEAN, ident, new Location(this.line, this.column));
+        return new Token(Token.BOOLEAN, reserved, new Location(this.line, this.column));
     }
 }
 
