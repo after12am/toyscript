@@ -2,7 +2,7 @@
     break a stream of token
 */
 exports.tokenize = function(source) {
-    return new Tokenizer(source).tokenize();
+    return new Lexer(source).tokenize();
 }
 
 /*

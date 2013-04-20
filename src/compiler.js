@@ -11,12 +11,12 @@ Compiler.prototype.compile = function() {
     }
     
     var log = new Log();
-    var tokenizer = new Tokenizer(this.source);
+    var lexer = new Lexer(this.source);
     var tokens;
     var nodes;
     var javascript;
     
-    if (tokens = tokenizer.tokenize()) {
+    if (tokens = lexer.tokenize()) {
         if (nodes = new Parser(tokens, log).parse()) {
             javascript = escodegen.generate(nodes)
         }

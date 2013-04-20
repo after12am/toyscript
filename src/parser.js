@@ -171,7 +171,11 @@ Parser.prototype.parseStatement = function() {
     default: return this.parseExpressionStatement();
     }
     
-    throw new Message(this.token, Message.UnexpectedToken + ' \'{token}\''.format(this.token.text)).toString();
+    throw new Error("{location} {message} {token}".format({
+        location: this.token.location.toString(),
+        message: Message.UnexpectedToken,
+        token: this.token.text
+    }));
 }
 
 /*
@@ -230,7 +234,10 @@ Parser.prototype.parseBlock = function() {
         };
     }
     
-    throw new Message(this.token, Message.IllegalBlock).toString();
+    throw new Error("{location} {message}".format({
+        location: this.token.location.toString(),
+        message: Message.IllegalBlock
+    }));
 }
 
 /*
@@ -275,7 +282,10 @@ Parser.prototype.parseStatementList = function() {
         if (this.matchKind(Token.INDENT)) {
             if (this.token.text < indent) break;
             if (this.token.text > indent) {
-                throw new Message(this.token, Message.IndentSize).toString();
+                throw new Error("{location} {message}".format({
+                    location: this.token.location.toString(),
+                    message: Message.IllegalIndentSize
+                }));
             }
             this.consume();
             continue;
@@ -425,19 +435,28 @@ Parser.prototype.parseIfStatement = function() {
     var test = this.parseExpression();
     
     if (!this.match(':')) {
-        throw new Message(this.token, Message.IllegalIf).toString();
+        throw new Error("{location} {message}".format({
+            location: this.token.location.toString(),
+            message: Message.IllegalIf
+        }));
     }
     
     var consequent = this.parseStatement();
     if (consequent.type === Syntax.ExpressionStatement) {
         if (consequent && !consequent.expression) {
-            throw new Message(this.token, Message.IllegalIf).toString();
+            throw new Error("{location} {message}".format({
+                location: this.token.location.toString(),
+                message: Message.IllegalIf
+            }));
         }
     }
     
     if (this.matchKind(Token.INDENT)) {
         if (!this.match(indent)) {
-            throw new Message(this.token, Message.IndentSize).toString();
+            throw new Error("{location} {message}".format({
+                location: this.token.location.toString(),
+                message: Message.IllegalIndentSize
+            }));
         }
     }
     
@@ -471,7 +490,10 @@ Parser.prototype.parseIterationStatement = function() {
         try {
             var test = this.parseExpression();
         } catch (e) {
-            throw new Message(this.token, Message.IndentWhile).toString();
+            throw new Error("{location} {message}".format({
+                location: this.token.location.toString(),
+                message: Message.IllegalWhile
+            }));
         }
         
         var _state = this.state;
@@ -506,7 +528,10 @@ Parser.prototype.parseIterationStatement = function() {
         this.state = _state;
         
         if (!right || !body) {
-            throw new Message(this.token, Message.IndentFor).toString();
+            throw new Error("{location} {message}".format({
+                location: this.token.location.toString(),
+                message: Message.IllegalFor
+            }));
         }
         
         if (exprs.length === 1) {
@@ -648,11 +673,17 @@ Parser.prototype.parseContinueStatement = function() {
     
     if (!(this.token.kind === Token.NEWLINE 
        || this.token.kind === Token.EOF)) {
-        throw new Message(this.token, Message.IllegalContinue).toString();
+        throw new Error("{location} {message}".format({
+            location: this.token.location.toString(),
+            message: Message.IllegalContinue
+        }));
     }
     
     if (this.state !== State.InIteration) {
-        throw new Message(this.token, Message.IllegalContinuePosition).toString();
+        throw new Error("{location} {message}".format({
+            location: this.token.location.toString(),
+            message: Message.IllegalContinuePosition
+        }));
     }
     
     return {
@@ -672,11 +703,17 @@ Parser.prototype.parseBreakStatement = function() {
     
     if (!(this.token.kind === Token.NEWLINE 
        || this.token.kind === Token.EOF)) {
-        throw new Message(this.token, Message.IllegalBreak).toString();
+        throw new Error("{location} {message}".format({
+            location: this.token.location.toString(),
+            message: Message.IllegalBreak
+        }));
     }
     
     if (this.state !== State.InIteration) {
-        throw new Message(this.token, Message.IllegalBreakPosition).toString();
+        throw new Error("{location} {message}".format({
+            location: this.token.location.toString(),
+            message: Message.IllegalBreakPosition
+        }));
     }
     
     return {
@@ -695,7 +732,10 @@ Parser.prototype.parseReturnStatement = function() {
     this.consume();
     
     if (this.state !== State.InFunction) {
-        throw new Message(this.token, Message.IllegalReturn).toString();
+        throw new Error("{location} {message}".format({
+            location: this.token.location.toString(),
+            message: Message.IllegalReturn
+        }));
     }
     
     var argument = null;
@@ -706,7 +746,10 @@ Parser.prototype.parseReturnStatement = function() {
     
     if (!(this.token.kind === Token.NEWLINE 
        || this.token.kind === Token.EOF)) {
-        throw new Message(this.token, Message.IllegalReturnArgument).toString();
+        throw new Error("{location} {message}".format({
+            location: this.token.location.toString(),
+            message: Message.IllegalReturnArgument
+        }));
     }
     
     return {
@@ -1214,7 +1257,10 @@ Parser.prototype.parseArgumentList = function() {
             this.consume();
             continue;
         }
-        throw new Message(this.token, Message.IllegalArgumentList).toString();
+        throw new Error("{location} {message}".format({
+            location: this.token.location.toString(),
+            message: Message.IllegalArgumentList
+        }));
     }
     return arguments;
 }
@@ -1345,8 +1391,18 @@ Parser.prototype.parsePostfixExpression = function() {
         
         if (expr.type === Syntax.ObjectExpression
          || expr.type === Syntax.ArrayExpression) {
-            if (token.text === '++') throw new Message(this.token, Message.IllegalPostfixIncrement).toString();
-            if (token.text === '--') throw new Message(this.token, Message.IllegalPostfixDecrement).toString();
+            if (token.text === '++') {
+                throw new Error("{location} {message}".format({
+                    location: this.token.location.toString(),
+                    message: Message.IllegalPostfixIncrement
+                }));
+            }
+            if (token.text === '--') {
+                throw new Error("{location} {message}".format({
+                    location: this.token.location.toString(),
+                    message: Message.IllegalPostfixDecrement
+                }));
+            }
         }
         
         return {
@@ -1397,8 +1453,18 @@ Parser.prototype.parseUnaryExpression = function() {
         var expr = this.parseUnaryExpression();
         if (expr.type === Syntax.ObjectExpression
          || expr.type === Syntax.ArrayExpression) {
-            if (token.text === '++') throw new Message(this.token, Message.IllegalPrefixIncrement).toString();
-            if (token.text === '--') throw new Message(this.token, Message.IllegalPrefixDecrement).toString();
+            if (token.text === '++') {
+                throw new Error("{location} {message}".format({
+                    location: this.token.location.toString(),
+                    message: Message.IllegalPrefixIncrement
+                }));
+            }
+            if (token.text === '--') {
+                throw new Error("{location} {message}".format({
+                    location: this.token.location.toString(),
+                    message: Message.IllegalPrefixDecrement
+                }));
+            }
         }
         return {
             type: Syntax.UpdateExpression,
@@ -1453,7 +1519,10 @@ Parser.prototype.parseMultiplicativeExpression = function() {
         this.consume();
         if (expr.type === Syntax.ObjectExpression
          || expr.type === Syntax.ArrayExpression) {
-            throw new Message(this.token, Message.IllegalMultiplicativeExpression).toString();
+             throw new Error("{location} {message}".format({
+                 location: this.token.location.toString(),
+                 message: Message.IllegalMultiplicativeExpression
+             }));
         }
         expr = {
             type: Syntax.BinaryExpression,
@@ -1844,7 +1913,10 @@ Parser.prototype.parseConditionalExpression = function() {
         this.expect('else');
         var alternate = this.parseAssignmentExpression();
         if (!alternate) {
-            throw new Message(this.token, Message.IllegalConditionalExpression).toString();
+            throw new Error("{location} {message}".format({
+                location: this.token.location.toString(),
+                message: Message.IllegalConditionalExpression
+            }));
         }
         return {
             type: Syntax.ConditionalExpression,
