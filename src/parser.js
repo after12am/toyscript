@@ -405,7 +405,6 @@ Parser.prototype.parseIfStatement = function() {
         if (!this.match(indent)) {
             throw new Message(this.token, Message.IndentSize).toString();
         }
-        this.consume();
     }
     
     if (this.match('else')) {
