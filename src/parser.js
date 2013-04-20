@@ -8,10 +8,8 @@ var Parser = function(tokens, log) {
     this.inFunction = false;
     this.inIteration = false;
     this.log = log || new Log();
-    Lexer.call(this);
 }
 
-Parser.prototype = Object.create(Lexer.prototype);
 Parser.prototype.consume = function(k) {
     k = k || 1;
     while (k > 0) {
@@ -1711,6 +1709,40 @@ Parser.prototype.parseAssignmentExpression = function() {
     }
     
     return expr;
+}
+
+/*
+    11.13 Assignment Operators
+    
+    AssignmentOperator : one of
+        = *= /= %= += -= <<= >>= >>>= &= ^= |=
+*/
+Parser.prototype.matchAssign = function(op) {
+    
+    // 4character assignment
+    if (op === '>>>=') {
+        return true;
+    }
+    
+    // 3character assignment
+    if (op === '<<=' || op === '>>=' || op === '!==' || op === '===') {
+        return true;
+    }
+    
+    // 2character assignment
+    if (op === '*=' || op === '/=' || op === '%=' || 
+        op === '+=' || op === '-=' || op === '&=' || 
+        op === '^=' || op === '|=' || op === '<=' ||
+        op === '>=' || op === '==' || op === '!=') {
+        return true;
+    }
+    
+    // 1character assignment
+    if (op === '=') {
+        return true;
+    }
+    
+    return false;
 }
 
 /*

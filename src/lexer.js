@@ -48,37 +48,3 @@ Lexer.prototype.matchDigit = function(c) {
 Lexer.prototype.matchLetter = function(c) {
     return c >= "A" && c <= "Z" || c >= "a" && c <= "z" || c === "_" || c === "$";
 }
-
-/*
-    11.13 Assignment Operators
-    
-    AssignmentOperator : one of
-        = *= /= %= += -= <<= >>= >>>= &= ^= |=
-*/
-Lexer.prototype.matchAssign = function(op) {
-    
-    // 4character assignment
-    if (op === '>>>=') {
-        return true;
-    }
-    
-    // 3character assignment
-    if (op === '<<=' || op === '>>=' || op === '!==' || op === '===') {
-        return true;
-    }
-    
-    // 2character assignment
-    if (op === '*=' || op === '/=' || op === '%=' || 
-        op === '+=' || op === '-=' || op === '&=' || 
-        op === '^=' || op === '|=' || op === '<=' ||
-        op === '>=' || op === '==' || op === '!=') {
-        return true;
-    }
-    
-    // 1character assignment
-    if (op === '=') {
-        return true;
-    }
-    
-    return false;
-}
