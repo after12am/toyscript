@@ -84,16 +84,15 @@ Parser.prototype.expectKind = function(value, message) {
     LL(k)
 */
 Parser.prototype.lookahead = function(k) {
-    if (this.p + k < this.tokens.length) {
-        return this.tokens[this.p + k];
-    }
-    return new Token(Token.EOF, '', this.tokens[this.tokens.length - 1].location);
+    var len = this.tokens.length;
+    var kk = this.p + k;
+    if (kk < len) return this.tokens[kk];
+    return new Token(Token.EOF, '', this.tokens[len - 1].location);
 }
 
 Parser.prototype.lookback = function(k) {
-    if (this.p - k >= 0) {
-        return this.tokens[this.p - k];
-    }
+    var kk = this.p - k;
+    if (kk >= 0) return this.tokens[kk];
     return this.tokens[0];
 }
 
@@ -106,7 +105,8 @@ Parser.prototype.lookback = function(k) {
 Parser.prototype.parseProgram = function() {
     this.p = 0;
     for (var i = 1; i < this.tokens.length; i++) {
-        if (this.lookahead(i).kind === Token.INDENT && this.lookahead(i).text > 0) {
+        if (this.lookahead(i).kind === Token.INDENT 
+         && this.lookahead(i).text > 0) {
             this.indent_size = this.lookahead(i).text;
             break;
         }
@@ -129,7 +129,6 @@ Parser.prototype.parseSourceElements = function() {
     var nodes = [];
     
     while (1) {
-        
         // reset indent
         this.expect(0);
         this.indent = 0;
@@ -176,9 +175,7 @@ Parser.prototype.parseSourceElement = function() {
 Parser.prototype.parseStatement = function() {
     
     if (this.token.kind === Token.PUNCTUATOR) {
-        if (this.match(':')) {
-            return this.parseBlock();
-        }
+        if (this.match(':')) return this.parseBlock();
     }
     
     switch (this.token.kind) {
@@ -241,11 +238,11 @@ Parser.prototype.parseBlock = function() {
     }
     
     if (exprs.reduce(pass, false)) {
-        for (var i in exprs) {
-            if (exprs[i].type === Syntax.PassStatement) {
-                exprs[i].type = Syntax.EmptyStatement;
-            }
-        }
+        exprs = exprs.map(function(expr) {
+            if (expr.type === Syntax.PassStatement) 
+                expr.type = Syntax.EmptyStatement;
+            return expr;
+        });
         return {
             type: Syntax.BlockStatement,
             body: exprs
@@ -266,6 +263,7 @@ Parser.prototype.parseStatementList = function() {
     
     var exprs = [], expr = null;
     var indent = this.indent * this.indent_size;
+    
     while (1) {
         if (this.matchKind(Token.NEWLINE)) {
             var token = this.lookback(1);
@@ -276,17 +274,18 @@ Parser.prototype.parseStatementList = function() {
                 });
             }
         }
+        
         if (this.matchKind(Token.EOF)) break;
         if (this.matchKind(Token.INDENT)) {
             if (this.token.text < indent) break;
-            if (this.token.text > indent) throw new Message(this.token, Message.IndentSize).toString();
+            if (this.token.text > indent) {
+                throw new Message(this.token, Message.IndentSize).toString();
+            }
             this.consume();
             continue;
         }
-        if (!(expr = this.parseStatement())) {
-            
-            continue;
-        }
+        
+        if (!(expr = this.parseStatement())) continue;
         exprs.push(expr);
     }
     
@@ -411,9 +410,9 @@ Parser.prototype.parseIfStatement = function() {
     
     var alternate = null;
     var indent = this.indent * this.indent_size;
+    
     this.expect('if');
     var test = this.parseExpression();
-    
     var consequent = this.parseStatement();
     if (consequent.type === Syntax.ExpressionStatement) {
         if (consequent && !consequent.expression) {
@@ -480,88 +479,93 @@ Parser.prototype.parseIterationStatement = function() {
             if (this.match(',')) this.consume();
             exprs.push(this.parseLeftHandSideExpression());
         }
-        var left = exprs[0];
+        var left = exprs[0], right, body;
         
         this.expect('in');
         
-        try {
-            var right = this.parseExpression();
-        } catch (e) {
-            throw new Message(this.token, Message.IndentFor).toString();
-        }
-        
+        right = this.parseExpression();
         this.inIteration = true;
-        var body = this.parseStatement();
+        body = this.parseStatement()
         this.inIteration = false;
         
+        if (!right || !body) {
+            throw new Message(this.token, Message.IndentFor).toString();
+        }
         
         if (exprs.length === 1) {
             /*
                 would parse this:
                 
-                    for v in a = [2, 2]:
+                    for v in [1, 2]:
                         console.log(v)
                     
-                    a = [2, 2]
+                    for v in a = [1, 2]:
+                        console.log(v)
+                    
+                    a = [1, 2]
                     for v in a:
                         console.log(v)
             */
-            if (right.right && right.right.type === Syntax.ArrayExpression) {
-                if (right.type !== Syntax.AssignmentExpression) {
-                    right = {
-                        type: Syntax.AssignmentExpression,
-                        operator: "=",
-                        left: {
-                            type: "Identifier",
-                            name: "__arr"
-                        },
-                        right: right
-                    }
-                }
-                
-                // define index of array as __k
-                var index = '__k';
-                body.body.unshift({
-                    type: Syntax.VariableDeclaration,
-                    declarations: [{
-                        type: Syntax.VariableDeclarator,
-                        id: {
-                            type: Syntax.Identifier,
-                            name: exprs[0].name
-                        },
-                        init: {
-                            type: Syntax.MemberExpression,
-                            computed: true,
-                            object: {
-                                type: Syntax.Identifier,
-                                name: right.left.name
-                            },
-                            property: {
-                                type: Syntax.Identifier,
-                                name: index
-                            }
-                        }
-                    }],
-                    kind: 'var'
-                });
-                
-                return {
-                    type: Syntax.ForInStatement,
+            if (right.type !== Syntax.AssignmentExpression) {
+                right = {
+                    type: Syntax.AssignmentExpression,
+                    operator: "=",
                     left: {
-                        type: left.type, // may be identifier
-                        name: index
+                        type: "Identifier",
+                        name: "__arr"
                     },
-                    right: right,
-                    body: body,
-                    each: false
-                };
+                    right: right
+                }
             }
+            
+            // define index of array as __k
+            var index = '__k';
+            body.body.unshift({
+                type: Syntax.VariableDeclaration,
+                declarations: [{
+                    type: Syntax.VariableDeclarator,
+                    id: {
+                        type: Syntax.Identifier,
+                        name: exprs[0].name
+                    },
+                    init: {
+                        type: Syntax.MemberExpression,
+                        computed: true,
+                        object: {
+                            type: Syntax.Identifier,
+                            name: right.left.name
+                        },
+                        property: {
+                            type: Syntax.Identifier,
+                            name: index
+                        }
+                    }
+                }],
+                kind: 'var'
+            });
+            
+            return {
+                type: Syntax.ForInStatement,
+                left: {
+                    type: left.type, // may be identifier
+                    name: index
+                },
+                right: right,
+                body: body,
+                each: false
+            };
         }
         /*
             would parse this:
                 
-                for k, v in a = {'arg': 1}:
-                    pass
+                for k, v in a = {'k': 1, 'i': 2}:
+                    console.log(k, ':', v)
+                
+                for k, v in {'k': 1, 'i': 2}:
+                    console.log(k, ':', v)
+                
+                for v in a = {'k': 1, 'i': 2}:
+                    console.log(v)
         */
         else if (exprs.length === 2) {
             /*
@@ -701,12 +705,15 @@ Parser.prototype.parseReturnStatement = function() {
         raise [LineTerminator 無し] Expression
 */
 Parser.prototype.parseRaiseStatement = function() {
+    
     var argument = null;
     this.consume();
+    
     if (!(this.token.kind === Token.NEWLINE 
        || this.token.kind === Token.EOF)) {
         argument = this.parseExpression()
     }
+    
     return {
         type: Syntax.ThrowStatement,
         argument: argument
@@ -724,26 +731,29 @@ Parser.prototype.parseRaiseStatement = function() {
 Parser.prototype.parseTryStatement = function() {
     
     var indent = this.indent * this.indent_size;
-    var handlers = [];
-    var finalizer = null;
+    var handlers = [], block = null, finalizer = null;
     
     this.expect('try');
-    var block = this.parseBlock();
+    block = this.parseBlock();
     this.expect(indent);
     
+    /*
+        Catch :
+            catch ( Identifier ) Block
+             |
+             v
+            except Identifieropt: Block
+    */
     while (this.match('except')) {
-        
         handlers.push(this.parseExceptStatement());
-        
         if (this.token.kind === Token.EOF
          || this.token.kind === Token.NEWLINE) break;
-        
         this.expect(indent);
     }
     
     /*
         Finally:
-            finally Block
+            finally: Block
     */
     if (this.match('finally')) {
         this.consume();
@@ -765,15 +775,21 @@ Parser.prototype.parseTryStatement = function() {
         except Identifieropt: Block
 */
 Parser.prototype.parseExceptStatement = function() {
+    
     var param = null;
     this.expect('except');
+    
+    /*
+        except:
+        except Identifier:
+    */
     if (this.match(':')) {
-        // think about except:
         param = {
             type: Syntax.Identifier,
             name: 'e'
         };
     }
+    
     return {
         type: Syntax.CatchClause,
         param: param || this.parseIdentifier(),
@@ -818,8 +834,6 @@ Parser.prototype.parsePrimaryExpression = function() {
         if (this.match('{')) return this.parseObjectInitialiser();
         if (this.match('(')) return this.parseGroupingOperator();
     }
-    
-    //throw new Message(this.token, Message.UnexpectedToken, '\'' + this.token.text + '\'').toString();
 }
 
 /*
@@ -1004,6 +1018,7 @@ Parser.prototype.parsePropertyNameAndValueList = function() {
             });
         }
     }
+    
     return props;
 }
 
@@ -1139,7 +1154,6 @@ Parser.prototype.parseCallMember = function(object) {
         new NewExpression
 */
 Parser.prototype.parseNewExpression = function() {
-    
     if (this.match('new')) {
         this.consume();
         return {
@@ -1174,12 +1188,9 @@ Parser.prototype.parseArguments = function() {
         ArgumentList , AssignmentExpression
 */
 Parser.prototype.parseArgumentList = function() {
-    
     var arguments = [];
-    
     while (!this.match(')')) {
         arguments.push(this.parseAssignmentExpression());
-        
         if (this.match(')')) break;
         if (this.match(',')) {
             this.consume();
@@ -1233,7 +1244,6 @@ Parser.prototype.parseFunctionExpression = function() {
             var arguments = [];
             while (!this.match(')')) {
                 if (this.match(',')) this.consume();
-                
                 arguments.push(this.parsePrimaryExpression());
             }
             this.expect(')');
@@ -1243,26 +1253,24 @@ Parser.prototype.parseFunctionExpression = function() {
             this.inFunction = false;
             
             var idents = [];
-            var subtree = body.body[0].expression;
             // walk the subtree and find identifier node
-            (function walk(node) {
-                for (var i in node) {
-                    if (typeof node[i] !== 'object') continue;
-                    if (node[i].type === Syntax.Identifier
-                     && idents.indexOf(node[i].name) === -1) {
-                        idents.push(node[i].name);
+            (function walk(subtree) {
+                for (var i in subtree) {
+                    if (typeof subtree[i] !== 'object') continue;
+                    if (subtree[i].type === Syntax.Identifier
+                     && idents.indexOf(subtree[i].name) === -1) {
+                        idents.push(subtree[i].name);
                     }
-                    walk(node[i]);
+                    walk(subtree[i]);
                 }
-            })(subtree)
+            })(body.body[0].expression)
             
-            var params = [];
-            for (var i in idents) {
-                params.push({
+            var params = idents.map(function(ident) {
+                return {
                     type: Syntax.Identifier,
-                    name: idents[i]
-                });
-            }
+                    name: ident
+                }
+            });
             
             return {
                 type: Syntax.CallExpression,
@@ -1368,14 +1376,12 @@ Parser.prototype.parseUnaryExpression = function() {
     if (this.match('++') || this.match('--')) {
         var token = this.token;
         this.consume();
-        
         var expr = this.parseUnaryExpression();
         if (expr.type === Syntax.ObjectExpression
          || expr.type === Syntax.ArrayExpression) {
             if (token.text === '++') throw new Message(this.token, Message.IllegalPrefixIncrement).toString();
             if (token.text === '--') throw new Message(this.token, Message.IllegalPrefixDecrement).toString();
         }
-        
         return {
             type: Syntax.UpdateExpression,
             operator: token.text,
@@ -1432,12 +1438,10 @@ Parser.prototype.parseMultiplicativeExpression = function() {
     if (this.match('/') || this.match('*') || this.match('%')) {
         var token = this.token;
         this.consume();
-        
         if (expr.type === Syntax.ObjectExpression
          || expr.type === Syntax.ArrayExpression) {
             throw new Message(this.token, Message.IllegalMultiplicativeExpression).toString();
         }
-        
         return {
             type: Syntax.BinaryExpression,
             operator: token.text,
@@ -1690,9 +1694,7 @@ Parser.prototype.parseEqualityExpression = function() {
         var operator = '==';
         var token = this.token;
         this.consume();
-        if (token.text === '!=') {
-            operator = token.text;
-        }
+        if (token.text === '!=') operator = token.text;
         if (this.match('not')) {
             this.consume();
             operator = '!=';
@@ -1950,11 +1952,8 @@ Parser.prototype.parseExpression = function() {
             type: Syntax.SequenceExpression,
             expressions: [expr]
         };
-
         while (1) {
-            if (!this.match(',')) {
-                break;
-            }
+            if (!this.match(',')) break;
             this.consume();
             expr.expressions.push(this.parseAssignmentExpression());
         }
@@ -2002,15 +2001,19 @@ Parser.prototype.parseComment = function() {
         function Identifier ( FormalParameterListopt ) { FunctionBody }
 */
 Parser.prototype.parseFunctionDeclaration = function() {
+    
     this.expect('def');
     var id = this.parseIdentifier();
     var params = this.parseFormalParameterList();
+    
     this.inFunction = true;
     var body = this.parseFunctionBody();
+    this.inFunction = false;
+    
     if (body.body.length === 1 
      && body.body[0].type === Syntax.EmptyStatement) body.body = [];
-    body.body = params.init.concat(body.body)
-    this.inFunction = false;
+    body.body = params.init.concat(body.body);
+    
     return {
         type: Syntax.FunctionDeclaration,
         id: id,
@@ -2027,44 +2030,56 @@ Parser.prototype.parseFunctionDeclaration = function() {
         FormalParameterList , Identifier
          |
          v
-         AssignmentExpression
-         FormalParameterList , AssignmentExpression
+        AssignmentExpression
+        FormalParameterList , AssignmentExpression
 */
 Parser.prototype.parseFormalParameterList = function() {
     
-    var params = [], init = [];
     this.expect('(');
     
+    var params = [];
+    var init = [];
+    
     while (!this.match(')')) {
-        if (this.match(',')) {
-            this.consume();
-        }
+        if (this.match(',')) this.consume();
         
-        var left = this.parseIdentifier();
-        params.push(left);
+        params.push(this.parseIdentifier());
         
         if (this.match('=')) {
             this.consume();
-            var right = this.parsePrimaryExpression();
-            init.push({
-                type: Syntax.ExpressionStatement,
-                expression: {
-                    type: Syntax.AssignmentExpression,
-                    operator: "=",
-                    left: left,
-                    right: {
-                        type: Syntax.LogicalExpression,
-                        operator: "||",
-                        left: left,
-                        right: right
-                    }
-                }
-            });
+            init.push(this.parseDefaultArgument(
+                params[params.length - 1], 
+                this.parsePrimaryExpression()
+            ));
         }
     }
     
     this.expect(')');
-    return {params: params, init: init};
+    
+    return {
+        params: params,
+        init: init
+    };
+}
+
+/*
+    Default Argument
+*/
+Parser.prototype.parseDefaultArgument = function(left, right) {
+    return {
+        type: Syntax.ExpressionStatement,
+        expression: {
+            type: Syntax.AssignmentExpression,
+            operator: "=",
+            left: left,
+            right: {
+                type: Syntax.LogicalExpression,
+                operator: "||",
+                left: left,
+                right: right
+            }
+        }
+    };
 }
 
 /*
