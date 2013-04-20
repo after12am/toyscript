@@ -486,11 +486,71 @@ Parser.prototype.parseIterationStatement = function() {
         this.inIteration = false;
         
         
+        if (exprs.length === 1) {
+            /*
+                would parse this:
+                
+                    for v in a = [2, 2]:
+                        console.log(v)
+            */
+            if (right.right.type === Syntax.ArrayExpression) {
+                if (right.type !== Syntax.AssignmentExpression) {
+                    right = {
+                        type: "AssignmentExpression",
+                        operator: "=",
+                        left: {
+                            type: "Identifier",
+                            name: "__arr"
+                        },
+                        right: right
+                    }
+                }
+                
+                // define index of array as __k
+                var index = '__k';
+                body.body.unshift({
+                    type: Syntax.VariableDeclaration,
+                    declarations: [{
+                        type: Syntax.VariableDeclarator,
+                        id: {
+                            type: Syntax.Identifier,
+                            name: exprs[0].name
+                        },
+                        init: {
+                            type: Syntax.MemberExpression,
+                            computed: true,
+                            object: {
+                                type: Syntax.Identifier,
+                                name: right.left.name
+                            },
+                            property: {
+                                type: Syntax.Identifier,
+                                name: index
+                            }
+                        }
+                    }],
+                    kind: 'var'
+                });
+                
+                return {
+                    type: Syntax.ForInStatement,
+                    left: {
+                        type: left.type, // may be identifier
+                        name: index
+                    },
+                    right: right,
+                    body: body,
+                    each: false
+                };
+            }
+        }
         /*
-            would parse this: for k, v in a = {'arg': 1}:
+            would parse this:
+                
+                for k, v in a = {'arg': 1}:
+                    pass
         */
-        if (exprs.length === 2) {
-            
+        else if (exprs.length === 2) {
             /*
                 part of :
                     a = {'arg': 1}
@@ -507,7 +567,7 @@ Parser.prototype.parseIterationStatement = function() {
                 }
             }
             
-            var head = {
+            body.body.unshift({
                 type: Syntax.VariableDeclaration,
                 declarations: [{
                     type: Syntax.VariableDeclarator,
@@ -529,8 +589,7 @@ Parser.prototype.parseIterationStatement = function() {
                     }
                 }],
                 kind: 'var'
-            }
-            body.body.unshift(head);
+            });
         }
         
         return {
