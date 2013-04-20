@@ -1210,13 +1210,21 @@ Parser.prototype.parseFunctionExpression = function() {
             (function (x) {
             	return x * x;
             })(2);
+            
+            (2, 2): x * y
+             |
+             v
+            (function (x, y) {
+            	return x * y;
+            })(2, 2);
     */
     if (this.match('(')) {
         
         var k = 1;
-        while (this.lookahead(k++).text === ')') {
+        while (this.lookahead(k).text !== ')') {
             if (this.lookahead(k).kind === Token.NEWLINE
              || this.lookahead(k).kind === Token.EOF) break;
+             k++;
         }
         
         if (this.lookahead(++k).text === ':') {
@@ -1225,6 +1233,7 @@ Parser.prototype.parseFunctionExpression = function() {
             var arguments = [];
             while (!this.match(')')) {
                 if (this.match(',')) this.consume();
+                
                 arguments.push(this.parsePrimaryExpression());
             }
             this.expect(')');
