@@ -1695,11 +1695,6 @@ Parser.prototype.parseAssignmentExpression = function() {
     if (this.matchAssign(this.token.text)) {
         var assign = this.token.text;
         this.consume();
-        
-        // not implement
-        // LeftHandSideExpression
-        // var expr = this.parseLeftHandSideExpression();
-        
         expr = {
             type: Syntax.AssignmentExpression,
             operator: assign,
