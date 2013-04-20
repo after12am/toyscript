@@ -501,8 +501,12 @@ Parser.prototype.parseIterationStatement = function() {
                 
                     for v in a = [2, 2]:
                         console.log(v)
+                    
+                    a = [2, 2]
+                    for v in a:
+                        console.log(v)
             */
-            if (right.right.type === Syntax.ArrayExpression) {
+            if (right.right && right.right.type === Syntax.ArrayExpression) {
                 if (right.type !== Syntax.AssignmentExpression) {
                     right = {
                         type: "AssignmentExpression",
