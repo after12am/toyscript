@@ -215,16 +215,32 @@ Parser.prototype.parseBlock = function() {
     
     this.expect(':');
     
-    // for allowing below one liner code
-    // example) if a: a = 1
+    /*
+        if a:
+            a = 1
+            b = 1
+    */
     if (this.matchKind(Token.NEWLINE)) {
         this.consume();
     }
     
     var token = this.token;
-    this.indent++;
-    var exprs = this.parseStatementList();
-    this.indent--;
+    var exprs = [];
+    
+    if (this.matchKind(Token.INDENT)) {
+        this.indent++;
+        exprs = this.parseStatementList();
+        this.indent--;
+    }
+    /*
+        would parse this:
+        
+        if a: a = 1
+        a = 2
+    */
+    else {
+        exprs = [this.parseStatement()];
+    }
     
     if (exprs.reduce(pass, false)) {
         for (var i in exprs) {
