@@ -6,17 +6,7 @@
 + 9 Type Conversion
 + 10 Execution Contexts
 + 10.1.1 Function Function Objects
-+ 10.1.4 Scope Chain and Identifier Resolution
-    if a:
-        a = 1
-        a = 2
-     |
-     v
-    if (a) {
-        var a = 1;
-        var a = 2;
-    }
-    always　declaration as var expression
+
     
 + 13.2 Creating Function Objects
 + 15 Native ECMAScript Objects

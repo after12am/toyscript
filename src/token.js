@@ -59,3 +59,4 @@ Token.KEYWORDS.VOID = 'void';
 Token.KEYWORDS.WHILE = 'while';
 Token.KEYWORDS.XOR = 'xor';
 Token.KEYWORDS.NONE = 'none';
+Token.KEYWORDS.VAR = 'var';

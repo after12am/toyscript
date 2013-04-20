@@ -295,6 +295,7 @@ Parser.prototype.parseStatementList = function() {
         var VariableDeclarationList ;
 */
 Parser.prototype.parseVariableStatement = function() {
+    this.consume();
     return {
         type: Syntax.VariableDeclaration,
         declarations: this.parseVariableDeclarationList(),
@@ -377,12 +378,25 @@ Parser.prototype.parsePassStatement = function() {
 */
 Parser.prototype.parseExpressionStatement = function() {
     
-    // confirm whether Variable Statement
+    /*
+        if a:
+            a = 1
+            a = 2
+         |
+         v
+        if (a) {
+            var a = 1;
+            var a = 2;
+        }
+        
+        Would have been declared as var expression
+        
     if (this.matchKind(Token.IDENTIFIER)) {
         if (this.lookahead(1).text === '=') {
             return this.parseVariableStatement();
         }
     }
+    */
     
     if (this.match('def') || this.match(':')) return;
     

@@ -43,6 +43,8 @@ var escodegen = {};
 }(function (exports, global) {
     'use strict';
     
+    var SEMICOLON = '';//';';
+    
     var Syntax,
         Precedence,
         BinaryPrecedence,
@@ -721,7 +723,7 @@ var escodegen = {};
         }
 
         if (stmt.type === Syntax.EmptyStatement && noLeadingComment) {
-            return ';';
+            return SEMICOLON;
         }
 
         withIndent(function () {
@@ -1164,7 +1166,7 @@ var escodegen = {};
         var i, len, result, node, allowIn, functionBody, directiveContext, fragment, semicolon;
 
         allowIn = true;
-        semicolon = ';';
+        semicolon = SEMICOLON;
         functionBody = false;
         directiveContext = false;
         if (option) {
@@ -1255,7 +1257,7 @@ var escodegen = {};
             break;
 
         case Syntax.EmptyStatement:
-            //result = ';';
+            //result = SEMICOLON;
             break;
 
         case Syntax.ExpressionStatement:
@@ -1453,10 +1455,10 @@ var escodegen = {};
                             precedence: Precedence.Sequence,
                             allowIn: false,
                             allowCall: true
-                        }), ';');
+                        }), SEMICOLON);
                     }
                 } else {
-                    result.push(';');
+                    result.push(SEMICOLON);
                 }
 
                 if (stmt.test) {
@@ -1464,9 +1466,9 @@ var escodegen = {};
                         precedence: Precedence.Sequence,
                         allowIn: true,
                         allowCall: true
-                    }), ';');
+                    }), SEMICOLON);
                 } else {
-                    result.push(';');
+                    result.push(SEMICOLON);
                 }
 
                 if (stmt.update) {
