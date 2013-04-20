@@ -509,7 +509,7 @@ Parser.prototype.parseIterationStatement = function() {
             if (right.right && right.right.type === Syntax.ArrayExpression) {
                 if (right.type !== Syntax.AssignmentExpression) {
                     right = {
-                        type: "AssignmentExpression",
+                        type: Syntax.AssignmentExpression,
                         operator: "=",
                         left: {
                             type: "Identifier",
@@ -570,7 +570,7 @@ Parser.prototype.parseIterationStatement = function() {
             */
             if (right.type !== Syntax.AssignmentExpression) {
                 right = {
-                    type: "AssignmentExpression",
+                    type: Syntax.AssignmentExpression,
                     operator: "=",
                     left: {
                         type: "Identifier",
@@ -2023,20 +2023,6 @@ Parser.prototype.parseFunctionDeclaration = function() {
 */
 Parser.prototype.parseFormalParameterList = function() {
     
-    var assignmentExpression = function(left, right) {
-        return {
-            type: Syntax.AssignmentExpression,
-            operator: "=",
-            left: left,
-            right: {
-                type: Syntax.LogicalExpression,
-                operator: "||",
-                left: left,
-                right: right
-            }
-        }
-    }
-    
     var params = [], init = [];
     this.expect('(');
     
@@ -2053,7 +2039,17 @@ Parser.prototype.parseFormalParameterList = function() {
             var right = this.parsePrimaryExpression();
             init.push({
                 type: Syntax.ExpressionStatement,
-                expression: assignmentExpression(left, right)
+                expression: {
+                    type: Syntax.AssignmentExpression,
+                    operator: "=",
+                    left: left,
+                    right: {
+                        type: Syntax.LogicalExpression,
+                        operator: "||",
+                        left: left,
+                        right: right
+                    }
+                }
             });
         }
     }
