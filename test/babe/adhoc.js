@@ -6,7 +6,7 @@ var source = fs.readFileSync('source.babe.js', 'utf8');
 try {
     var nodes = babe.parse(source);
     console.log('result: ', nodes);
-    console.log(babe.escodegen.generate(nodes, {comment: true}));
+    console.log(babe.codegen(nodes));
     
 } catch (e) {
     console.log(e);

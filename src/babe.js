@@ -13,17 +13,14 @@ exports.tokenize = function(source) {
 */
 exports.parse = function(source) {
     var tokens = exports.tokenize(source);
-    var nodes = new Parser(tokens).parse();
-    return nodes;
+    return new Parser(tokens).parse();
 }
 
 /*
     convenience function of babe.compile()
 */
-exports.codegen = function(source) {
-    var nodes = exports.parse(source);
-    var javascript = escodegen.generate(nodes)
-    return javascript;
+exports.codegen = function(nodes) {
+    return escodegen.generate(nodes);
 }
 
 /*

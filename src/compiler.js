@@ -18,7 +18,7 @@ Compiler.prototype.compile = function() {
     
     if (tokens = tokenizer.tokenize()) {
         if (nodes = new Parser(tokens, log).parse()) {
-            javascript = exports.escodegen.generate(nodes)
+            javascript = escodegen.generate(nodes)
         }
     }
     
