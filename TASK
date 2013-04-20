@@ -1,7 +1,5 @@
 [bug]
 
-+ different result 3 >>> 2 >>> 1. babe.js parses as 3 >>> (2 >>> 1)
-
 
 [specification]
 

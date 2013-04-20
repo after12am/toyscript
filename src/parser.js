@@ -1396,15 +1396,10 @@ Parser.prototype.parseUnaryExpression = function() {
     if (this.match('+') || this.match('-') || this.match('~') || this.match('!')) {
         var token = this.token;
         this.consume();
-        var expr = this.parseUnaryExpression();
-        /*
-            may have to handle exception here
-            example, {} + {}, {} - {}
-        */
         return {
             type: Syntax.UnaryExpression,
             operator: token.text,
-            argument: expr
+            argument: this.parseUnaryExpression()
         };
     }
     
@@ -1437,18 +1432,18 @@ Parser.prototype.parseMultiplicativeExpression = function() {
     var expr = this.parseUnaryExpression();
     
     // 11.5.1 - 11.5.3
-    if (this.match('/') || this.match('*') || this.match('%')) {
+    while (this.match('/') || this.match('*') || this.match('%')) {
         var token = this.token;
         this.consume();
         if (expr.type === Syntax.ObjectExpression
          || expr.type === Syntax.ArrayExpression) {
             throw new Message(this.token, Message.IllegalMultiplicativeExpression).toString();
         }
-        return {
+        expr = {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
-            right: this.parseMultiplicativeExpression()
+            right: this.parseUnaryExpression()
         };
     }
     
@@ -1468,14 +1463,14 @@ Parser.prototype.parseAdditiveExpression = function() {
     var expr = this.parseMultiplicativeExpression();
     
     // 11.6.1 - 11.6.2
-    if (this.match('+') || this.match('-')) {
+    while (this.match('+') || this.match('-')) {
         var token = this.token;
         this.consume();
-        return {
+        expr = {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
-            right: this.parseAdditiveExpression()
+            right: this.parseMultiplicativeExpression()
         };
     }
     
@@ -1495,39 +1490,14 @@ Parser.prototype.parseShiftExpression = function() {
     
     var expr = this.parseAdditiveExpression();
     
-    if (this.match('<<') || this.match('>>')) {
+    while (this.match('<<') || this.match('>>') || this.match('>>>')) {
         var token = this.token;
         this.consume();
-        
-        /*
-        if (expr.type === Syntax.ObjectExpression
-         || expr.type === Syntax.ArrayExpression) {
-            throw new Message(this.token, Message.IllegalShiftExpression).toString();
-        }*/
-        
-        return {
+        expr = {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
-            right: this.parseShiftExpression()
-        };
-    }
-    
-    if (this.match('>>>')) {
-        var token = this.token;
-        this.consume();
-        
-        /*
-        if (expr.type === Syntax.ObjectExpression
-         || expr.type === Syntax.ArrayExpression) {
-            throw new Message(this.token, Message.IllegalShiftExpression).toString();
-        }*/
-        
-        return {
-            type: Syntax.BinaryExpression,
-            operator: token.text,
-            left: expr,
-            right: this.parseShiftExpression()
+            right: this.parseAdditiveExpression()
         };
     }
     
@@ -1550,37 +1520,11 @@ Parser.prototype.parseRelationalExpression = function() {
     
     var expr = this.parseShiftExpression();
     
-    // 11.8.1 - 11.8.2
-    if (this.match('<') || this.match('>')) {
+    // 11.8.1, 11.8.2, 11.8.3, 11.8.4, 11.8.6
+    while (this.match('<') || this.match('>') || this.match('<=') || this.match('>=') || this.match('instanceof')) {
         var token = this.token;
         this.consume();
-        
-        /*
-        if (expr.type === Syntax.ObjectExpression
-         || expr.type === Syntax.ArrayExpression) {
-            throw new Message(this.token, Message.IllegalRelationalExpression).toString();
-        }*/
-        
-        return {
-            type: Syntax.BinaryExpression,
-            operator: token.text,
-            left: expr,
-            right: this.parseRelationalExpression()
-        };
-    }
-    
-    // 11.8.3 - 11.8.4
-    if (this.match('<=') || this.match('>=')) {
-        var token = this.token;
-        this.consume();
-        
-        /*
-        if (expr.type === Syntax.ObjectExpression
-         || expr.type === Syntax.ArrayExpression) {
-            throw new Message(this.token, Message.IllegalRelationalExpression).toString();
-        }*/
-        
-        return {
+        expr = {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
@@ -1615,18 +1559,6 @@ Parser.prototype.parseRelationalExpression = function() {
             type: Syntax.BinaryExpression,
             operator: '===',
             left: left,
-            right: this.parseRelationalExpression()
-        };
-    }
-    
-    // 11.8.6 The instanceof operator
-    if (this.match('instanceof')) {
-        var token = this.token;
-        this.consume();
-        return {
-            type: Syntax.BinaryExpression,
-            operator: token.text,
-            left: expr,
             right: this.parseRelationalExpression()
         };
     }
@@ -1692,7 +1624,7 @@ Parser.prototype.parseEqualityExpression = function() {
     var expr = this.parseRelationalExpression();
     
     // 11.9.1 - 11.9.2
-    if (this.match('==') || this.match('!=') || this.match('is')) {
+    while (this.match('==') || this.match('!=') || this.match('is')) {
         var operator = '==';
         var token = this.token;
         this.consume();
@@ -1701,7 +1633,7 @@ Parser.prototype.parseEqualityExpression = function() {
             this.consume();
             operator = '!=';
         }
-        return {
+        expr = {
             type: Syntax.BinaryExpression,
             operator: operator,
             left: expr,
@@ -1710,10 +1642,10 @@ Parser.prototype.parseEqualityExpression = function() {
     }
     
     // 11.9.4 - 11.9.5
-    if (this.match('===') || this.match('!==')) {
+    while (this.match('===') || this.match('!==')) {
         var token = this.token;
         this.consume();
-        return {
+        expr = {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
@@ -1732,13 +1664,12 @@ Parser.prototype.parseEqualityExpression = function() {
 */
 Parser.prototype.parseBitwiseANDExpression = function() {
     
-    var token = this.token;
     var expr = this.parseEqualityExpression();
     
-    if (this.match('&')) {
+    while (this.match('&')) {
         var token = this.token;
         this.consume();
-        return {
+        expr = {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
@@ -1760,10 +1691,10 @@ Parser.prototype.parseBitwiseXORExpression = function() {
     
     var expr = this.parseBitwiseANDExpression();
     
-    if (this.match('^')) {
+    while (this.match('^')) {
         var token = this.token;
         this.consume();
-        return {
+        expr = {
             type: Syntax.BinaryExpression,
             operator: '^',
             left: expr,
@@ -1785,10 +1716,10 @@ Parser.prototype.parseBitwiseORExpression = function() {
     
     var expr = this.parseBitwiseXORExpression();
     
-    if (this.match('|')) {
+    while (this.match('|')) {
         var token = this.token;
         this.consume();
-        return {
+        expr = {
             type: Syntax.BinaryExpression,
             operator: token.text,
             left: expr,
@@ -1810,7 +1741,7 @@ Parser.prototype.parseLogicalANDExpression = function() {
     
     var expr = this.parseBitwiseORExpression();
     
-    if (this.match('and')) {
+    while (this.match('and')) {
         this.consume();
         expr = {
             type: Syntax.BinaryExpression,
@@ -1835,7 +1766,7 @@ Parser.prototype.parseLogicalORExpression = function() {
     var expr = this.parseLogicalANDExpression();
     var or = this.token.text;
     
-    if (this.match('or')) {
+    while (this.match('or')) {
         this.consume();
         expr = {
             type: Syntax.BinaryExpression,
