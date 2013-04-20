@@ -825,6 +825,7 @@ Parser.prototype.parsePrimaryExpression = function() {
         return this.parseIdentifier();
     }
     
+    // add keywords
     if (this.token.kind === Token.KEYWORDS.NONE 
      || this.token.kind === Token.BOOLEAN
      || this.token.kind === Token.DIGIT 
@@ -1525,7 +1526,9 @@ Parser.prototype.parseRelationalExpression = function() {
     while (this.match('<') || this.match('>') 
         || this.match('<=') || this.match('>=') 
         || this.match('instanceof')
-        || this.match('in')) {
+        || this.match('in')
+        || this.match('typeof')) {
+        
         var right;
         var in_operator = this.match('in');
         var token = this.token;
@@ -1597,6 +1600,36 @@ Parser.prototype.parseRelationalExpression = function() {
                 }
             };
         }
+        /*
+            if "text" typeof "string":
+                console.log("this is string")
+        */
+        else if (token.text === 'typeof') {
+            
+            /*
+                ShiftExpression :: one of 
+
+                    Undefined	"undefined"
+                    Null	"object"
+                    Boolean	"boolean"
+                    Number	"number"
+                    String	"string"
+                    Object (native and doesn't implement [[Call]])	"object"
+                    Object (native and implements [[Call]])	"function"
+                    Object (host)	Implementation-dependent
+            */
+
+            expr = {
+                type: Syntax.BinaryExpression,
+                operator: '===',
+                left: {
+                    type: Syntax.UnaryExpression,
+                    operator: 'typeof',
+                    argument: expr
+                },
+                right: right
+            };
+        }
         else {
             expr = {
                 type: Syntax.BinaryExpression,
@@ -1605,37 +1638,6 @@ Parser.prototype.parseRelationalExpression = function() {
                 right: right
             };
         }
-    }
-    
-    // 11.4.3 The typeof Operator
-    if (this.match('typeof')) {
-        var token = this.token;
-        this.consume();
-        var left = {
-            type: Syntax.UnaryExpression,
-            operator: 'typeof',
-            argument: expr
-        };
-        
-        /*
-            ShiftExpression :: one of 
-            
-                Undefined	"undefined"
-                Null	"object"
-                Boolean	"boolean"
-                Number	"number"
-                String	"string"
-                Object (native and doesn't implement [[Call]])	"object"
-                Object (native and implements [[Call]])	"function"
-                Object (host)	Implementation-dependent
-        */
-        
-        return {
-            type: Syntax.BinaryExpression,
-            operator: '===',
-            left: left,
-            right: this.parseRelationalExpression()
-        };
     }
     
     return expr;
