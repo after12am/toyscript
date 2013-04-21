@@ -6,6 +6,7 @@ var Parser = function(tokens) {
     this.tokens = tokens;
     this.indent = 0;
     this.indent_size = 4; // default of indent size for parsing
+    this.ecstack = new EcStack();
 }
 
 Parser.prototype.consume = function(k) {
@@ -158,6 +159,33 @@ Parser.prototype.parseStatement = function() {
         if (this.match(':')) return this.parseBlock();
     }
     
+    /*
+        A problem of variable statement have been solved.
+        
+        a = 1
+        def test():
+            a = 2
+            a = 3
+            b = 2
+         |
+         v
+        var a = 1
+        function () {
+            var a = 2;
+            a = 3;
+            var b = 2;
+        }
+    */
+    if (this.token.kind === Token.IDENTIFIER) {
+        if (this.ecstack.current.indexOf(this.token.text) === -1) {
+            this.ecstack.current.push(this.token.text);
+            // match assignment statement
+            if (this.lookahead(1).text === '=') {
+                return this.parseVariableStatement();
+            }
+        }
+    }
+    
     switch (this.token.kind) {
     case Token.COMMENT: return this.parseComment();
     case Token.NEWLINE: return this.parseEmptyStatement();
@@ -307,7 +335,6 @@ Parser.prototype.parseStatementList = function() {
         var VariableDeclarationList ;
 */
 Parser.prototype.parseVariableStatement = function() {
-    this.consume();
     return {
         type: Syntax.VariableDeclaration,
         declarations: this.parseVariableDeclarationList(),
@@ -390,29 +417,9 @@ Parser.prototype.parsePassStatement = function() {
 */
 Parser.prototype.parseExpressionStatement = function() {
     
-    /*
-        if a:
-            a = 1
-            a = 2
-         |
-         v
-        if (a) {
-            var a = 1;
-            var a = 2;
-        }
-        
-        Would have been declared as var expression
-        
-    if (this.matchKind(Token.IDENTIFIER)) {
-        if (this.lookahead(1).text === '=') {
-            return this.parseVariableStatement();
-        }
-    }
-    */
-    
     if (this.match('def') || this.match(':')) return;
     
-    var expr = this.parseExpression();
+    var expr = this.parseExpression()
     if (expr) {
         return {
             type: Syntax.ExpressionStatement,
@@ -2072,9 +2079,11 @@ Parser.prototype.parseFunctionDeclaration = function() {
     var id = this.parseIdentifier();
     var params = this.parseFormalParameterList();
     
+    this.ecstack.push([]); // stack function context
     this.state = State.InFunction;
     var body = this.parseFunctionBody();
     this.state = false;
+    this.ecstack.pop();
     
     if (body.body.length === 1 
      && body.body[0].type === Syntax.EmptyStatement) body.body = [];
