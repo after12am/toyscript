@@ -897,6 +897,17 @@ Parser.prototype.parsePrimaryExpression = function() {
         if (this.match('{')) return this.parseObjectInitialiser();
         if (this.match('(')) return this.parseGroupingOperator();
     }
+    
+    /*
+        unexpected token like this:
+        
+        // comment
+    */
+    throw new Error("{location} {message} {token}".format({
+        location: this.token.location.toString(),
+        message: Message.UnexpectedToken,
+        token: this.token.text
+    }));
 }
 
 /*
