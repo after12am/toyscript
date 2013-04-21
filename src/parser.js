@@ -1332,9 +1332,10 @@ Parser.prototype.parseFunctionExpression = function() {
             }
             this.expect(')');
             
+            var _state = this.state;
             this.state = State.InFunction;
             var body = this.parseBlock();
-            this.state = false;
+            this.state = _state;
             
             var idents = [];
             // walk the subtree and find identifier node
@@ -2080,9 +2081,10 @@ Parser.prototype.parseFunctionDeclaration = function() {
     var params = this.parseFormalParameterList();
     
     this.ecstack.push([]); // stack function context
+    var _state = this.state;
     this.state = State.InFunction;
     var body = this.parseFunctionBody();
-    this.state = false;
+    this.state = _state;
     this.ecstack.pop();
     
     if (body.body.length === 1 
