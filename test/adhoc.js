@@ -7,7 +7,7 @@ try {
     console.log("\n\n\n\n\n");
     console.log("\n========== nodes ===========");
     var nodes = babe.parse(source);
-    console.log(nodes.body);
+    console.log(nodes);
     
     console.log("\n========= codegen ==========");
     var script = babe.codegen(nodes);

@@ -1,3 +1,5 @@
+var executable;
+
 /*
     break a stream of token
 */
@@ -23,17 +25,22 @@ exports.codegen = function(nodes) {
     convert javascript to babescript
 */
 exports.compile = function(source) {
-    throw new Error('not implemented');
+    return exports.codegen(exports.parse(source));
+}
+
+/*
+    execute babescript after compiled
+*/
+exports.run = function() {
+    if (executable) {
+        return eval(executable);
+    }
+    throw new Error("has to call after compile. confirm whether compile() have been called");
 }
 
 /*
     execute babescript
 */
 exports.interpret = function(source) {
-    throw new Error('not implemented');
+    return eval(exports.compile(source));
 }
-
-/*
-    alias of babe.interpret()
-*/
-exports.run = exports.interpret;
