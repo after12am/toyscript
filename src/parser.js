@@ -237,12 +237,6 @@ Parser.prototype.parseStatement = function() {
     case Token.KEYWORDS.TRY: return this.parseTryStatement();
     default: return this.parseExpressionStatement();
     }
-    
-    throw new Error("{location} {message} {token}".format({
-        location: this.token.location.toString(),
-        message: Message.UnexpectedToken,
-        token: this.token.text
-    }));
 }
 
 /*
