@@ -1,0 +1,10 @@
+/+
+new A()
+
+var a = 1, b = 2
+new B(a, b)
++/
+new A()
+
+a = 1, b = 2
+new B(a, b)

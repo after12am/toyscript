@@ -1,0 +1,12 @@
+/+
+var a = 1
+var b = -1
+
+a = a + b === 0 ? 1 : 0
+a = a - b ? 1 : 0
++/
+a = 1
+b = -1
+
+a = 1 if a + b === 0 else 0
+a = 1 if a - b else 0

@@ -1,0 +1,46 @@
+/+
+var a = 1
+var b = 2
+
+b
+a < b
+a > b
+a <= b
+a >= b
+a instanceof b
+typeof a === b
+a in b
+
+'a' in (a = {'a': 1})
+!('a' in {'a': 1})
+
+[
+    1,
+    2,
+    3
+].indexOf(1) !== -1
+
+[
+    1,
+    2,
+    3
+].indexOf(1) === -1
++/
+a = 1
+b = 2
+
+b
+a < b
+a > b
+a <= b
+a >= b
+a instanceof b
+a typeof b
+a in b
+
+"a" in a = {"a": 1}
+not "a" in {"a": 1}
+
+1 in [1, 2, 3]
+
+not 1 in [1, 2, 3]

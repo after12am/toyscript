@@ -1,0 +1,43 @@
+/+
+var a = null
+
+var b = true
+var c = false
+
+var d = 1
+var e = 1.1
+var f = 1
+
+var g = 'single quotation'
+var h = 'double quotation'
+
+a = [
+    1,
+    2,
+    3
+]
+
+a = {
+    'a': 1,
+    'b': 2
+}
+
+!(a == 1)
++/
+a = none
+
+b = true
+c = false
+
+d = 1
+e = 1.1
+f = 1.0
+
+g = 'single quotation'
+h = "double quotation"
+
+a = [1, 2, 3]
+
+a = {"a":1, "b":2}
+
+not (a == 1)

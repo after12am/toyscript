@@ -1,5 +1,5 @@
 var fs = require('fs');
-var babe = require('../babe');
+var babe = require('../build/node-babe');
 
 var source = fs.readFileSync('source.babe.js', 'utf8');
 

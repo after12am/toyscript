@@ -1,6 +1,6 @@
 var sprintf = require('sprintf').sprintf;
 var fs = require('fs');
-var babe = require('./babe');
+var babe = require('../build/node-babe');
 var colors = require('colors');
 
 colors.setTheme({
@@ -24,15 +24,19 @@ var failed = [];
 function summary() {
     var len = passed.length + failed.length;
     var format = passed.length === len ? "[%s/%s]".info : "[%s/%s]".error;
-    console.log(sprintf(format, passed.length, len));
+    console.log(sprintf("\n"+format, passed.length, len));
 }
 
 function run(test) {
-    
     var no = passed.length + failed.length + 1;
     var res;
     var data = fs.readFileSync(test, 'utf8');
-    var m = data.match(/^\/\+\n(.*)\n\+\/\n(.*)/)
+    var m = data.match(/^\/\+\n([\s\S.]*)\n\+\/\n([\s\S.]*)/);
+    if (!m) {
+        console.log(sprintf("%2s. %s => code not found".error, no, test));
+        failed.push(test);
+        return;
+    }
     var expect = m[1];
     var code = m[2];
     
@@ -43,10 +47,10 @@ function run(test) {
     }
     
     if (res === expect) {
-        console.log(sprintf("%2s. %s => fail\n".verbose, no, test));
+        console.log(sprintf("%2s. %s => success".verbose, no, test));
         passed.push(test);
     } else {
-        console.log(sprintf("%2s. %s => fail".error, no, test));
+        console.log(sprintf("%2s. %s => failure".error, no, test));
         console.log("\n============ expect ============".error);
         console.log(expect.toString().error);
         console.log("\n============ actual ============".error);

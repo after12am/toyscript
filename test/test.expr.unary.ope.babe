@@ -1,0 +1,24 @@
+/+
+delete a
+void a
+++a
+--a
+a++
+a--
++a
+-a
+~a
+!a
+!a
++/
+delete a
+void a
+++a
+--a
+a++
+a--
++a
+-a
+~a
+!a
+not a

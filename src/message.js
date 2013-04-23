@@ -4,6 +4,7 @@ var Message = {
     UnexpectedString:'Unexpected string',
     IllegalReservedIdent:'Variables starting with __ are reserved',
     IllegalIdent:'Identifier can not start with numeric',
+    IllegalIdentInitialize: 'Identifier has to be initialized',
     IllegalComment:'Illegal comment',
     IllegalBlock:'Block statement must have one statement at least',
     IllegalFor:'Illegal for statement',

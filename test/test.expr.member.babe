@@ -1,0 +1,32 @@
+/+
+var func = function (x) {
+        return x * x
+    }(2)
+
+var a = [
+        func,
+        2
+    ]
+a[0]
+
+var b = {
+        'a': func,
+        'b': 2
+    }
+b.a
+
+new a[0]()
+
+new b['a']()
++/
+func = (2): x * x
+
+a = [func, 2]
+a[0]
+
+b = {"a": func, "b": 2}
+b.a
+
+new a[0]()
+
+new b["a"]()

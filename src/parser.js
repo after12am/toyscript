@@ -201,10 +201,24 @@ Parser.prototype.parseStatement = function() {
     */
     if (this.token.kind === Token.IDENTIFIER) {
         if (this.ecstack.current.indexOf(this.token.text) === -1) {
-            this.ecstack.current.push(this.token.text);
-            // match assignment expression
+            /*
+                a()
+                a = 1
+                 |
+                 v
+                a()
+                a = 1 // expect: var a = 1
+            */
             if (this.lookahead(1).text === '=') {
+                this.ecstack.current.push(this.token.text);
                 return this.parseVariableStatement();
+            }
+            
+            if (this.lookahead(1).kind == Token.NEWLINE) {
+                throw new Error("{location} {message}".format({
+                    location: this.token.location.toString(),
+                    message: Message.IllegalIdentInitialize
+                }));
             }
         }
     }
@@ -380,7 +394,17 @@ Parser.prototype.parseVariableStatement = function() {
         VariableDeclaration
 */
 Parser.prototype.parseVariableDeclarationList = function() {
-    return [this.parseVariableDeclaration()];
+    
+    var variables = [];
+    
+    while (1) {
+        variables.push(this.parseVariableDeclaration());
+        if (!this.match(',')
+         || this.token.kind === Token.EOF
+         || this.token.kind === Token.NEWLINE) break;
+        this.consume();
+    };
+    return variables;
 }
 
 /*
@@ -931,15 +955,6 @@ Parser.prototype.parsePrimaryExpression = function() {
         if (this.match('(')) return this.parseGroupingOperator();
     }
     
-    
-    /*
-        if a:
-            a = 1
-        <EOF>
-    */
-    // if (this.token.kind === Token.EOF
-    //  || this.token.kind === Token.NEWLINE) return;
-    
     /*
         unexpected token like this:
 
@@ -1475,7 +1490,6 @@ Parser.prototype.parsePostfixExpression = function() {
     UnaryExpression:
         delete UnaryExpression
         void UnaryExpression
-        typeof UnaryExpression
         ++ UnaryExpression
         -- UnaryExpression
         + UnaryExpression
@@ -1650,6 +1664,7 @@ Parser.prototype.parseShiftExpression = function() {
         RelationalExpression >= ShiftExpression
         RelationalExpression instanceof ShiftExpression
         RelationalExpression in ShiftExpression
+        RelationalExpression typeof ShiftExpression
 */
 Parser.prototype.parseRelationalExpression = function() {
     
@@ -1681,7 +1696,9 @@ Parser.prototype.parseRelationalExpression = function() {
             if not "a" in {"a": 1}:
                 console.log('not found')
         */
-        if (in_operator && expr.type === Syntax.UnaryExpression) {
+        if (in_operator 
+         && expr.type === Syntax.UnaryExpression 
+         && right.type === Syntax.ObjectExpression) {
             expr = {
                 type: Syntax.UnaryExpression,
                 operator: "!",
@@ -1706,6 +1723,7 @@ Parser.prototype.parseRelationalExpression = function() {
                 operator = '===';
                 expr = expr.argument;
             }
+            
             expr = {
                 type: Syntax.BinaryExpression,
                 operator: operator,
@@ -1732,6 +1750,9 @@ Parser.prototype.parseRelationalExpression = function() {
                     }
                 }
             };
+            
+            
+            
         }
         /*
             if "text" typeof "string":
@@ -1785,6 +1806,8 @@ Parser.prototype.parseRelationalExpression = function() {
         EqualityExpression != RelationalExpression
         EqualityExpression === RelationalExpression
         EqualityExpression !== RelationalExpression
+        EqualityExpression is RelationalExpression
+        EqualityExpression is not RelationalExpression
 */
 Parser.prototype.parseEqualityExpression = function() {
     
@@ -1792,14 +1815,23 @@ Parser.prototype.parseEqualityExpression = function() {
     
     // 11.9.1 - 11.9.2
     while (this.match('==') || this.match('!=') || this.match('is')) {
-        var operator = '==';
-        var token = this.token;
+        var token = this.token, operator;
         this.consume();
-        if (token.text === '!=') operator = token.text;
-        if (this.match('not')) {
-            this.consume();
-            operator = '!=';
+        
+        switch (token.text) {
+        case 'is':
+            operator = '==';
+            // is not expression
+            if (this.match('not')) {
+                this.consume();
+                operator = '!=';
+            }
+            break;
+        default:
+            operator = token.text;
+            break;
         }
+        
         expr = {
             type: Syntax.BinaryExpression,
             operator: operator,
@@ -1899,7 +1931,7 @@ Parser.prototype.parseBitwiseORExpression = function() {
     
     LogicalANDExpression :
         BitwiseORExpression
-        LogicalANDExpression && BitwiseORExpression
+        LogicalANDExpression and BitwiseORExpression
 */
 Parser.prototype.parseLogicalANDExpression = function() {
     
@@ -1922,12 +1954,11 @@ Parser.prototype.parseLogicalANDExpression = function() {
     
     LogicalORExpression :
         LogicalANDExpression
-        LogicalORExpression || LogicalANDExpression
+        LogicalORExpression or LogicalANDExpression
 */
 Parser.prototype.parseLogicalORExpression = function() {
     
     var expr = this.parseLogicalANDExpression();
-    var or = this.token.text;
     
     while (this.match('or')) {
         this.consume();
@@ -1947,6 +1978,10 @@ Parser.prototype.parseLogicalORExpression = function() {
     ConditionalExpression :
         LogicalORExpression
         LogicalORExpression ? AssignmentExpression : AssignmentExpression
+         |
+         v
+        LogicalORExpression
+        LogicalORExpression if LogicalORExpression else LogicalORExpression
 */
 Parser.prototype.parseConditionalExpression = function() {
     
@@ -1954,9 +1989,9 @@ Parser.prototype.parseConditionalExpression = function() {
     
     if (this.match('if')) {
         this.consume();
-        var expr = this.parseAssignmentExpression();
+        var expr = this.parseLogicalORExpression();
         this.expect('else');
-        var alternate = this.parseAssignmentExpression();
+        var alternate = this.parseLogicalORExpression();
         if (!alternate) {
             throw new Error("{location} {message}".format({
                 location: this.token.location.toString(),
