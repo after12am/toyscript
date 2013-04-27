@@ -1,0 +1,8 @@
+/+
+throw 'throw error'
+
+throw new Error()
++/
+raise 'throw error'
+
+raise

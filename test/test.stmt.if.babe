@@ -1,0 +1,70 @@
+/+
+if (a) {
+    var a = 1
+}
+
+if (a) {
+    a = 1
+} else {
+    var b = 1
+}
+
+if (a) {
+    a = 1
+} else if (b) {
+    b = 2
+} else {
+    var c = 1
+}
+
+if (a) {
+    a = 1
+}
+a = 1
+
+if (a) {
+    a = 1
+}
+a = 2
+
+if (a) {
+    a = 1
+    
+    a = 2
+    a = 2
+}
+
+if (a in b) {
+    a = 1
+}
++/
+if a:
+    a = 1
+
+if a:
+    a = 1
+else:
+    b = 1
+
+if a:
+    a = 1
+else if b:
+    b = 2
+else:
+    c = 1
+
+if a:
+    a = 1
+a = 1
+
+if a: a = 1
+a = 2
+
+if a:
+    a = 1
+    
+    a = 2
+    a = 2
+
+if a in b:
+    a = 1

@@ -119,6 +119,9 @@ Parser.prototype.parseSourceElements = function() {
         */
         if (this.matchKind(Token.EOF)) break;
         if (node = this.parseSourceElement()) {
+            if (node.type === Syntax.PassStatement) {
+                node.type = Syntax.EmptyStatement;
+            }
             nodes.push(node);
         }
     }
@@ -513,6 +516,22 @@ Parser.prototype.parseIfStatement = function() {
         }
     }
     
+    /*
+        would parse this
+        
+        if a:
+            a = 1
+        a = 1
+        
+        if a:
+            a = 1
+        else:
+            a = 2
+    */
+    if (this.lookahead(1).text === 'else') {
+        this.consume();
+    }
+    
     if (this.match('else')) {
         this.consume();
         // else if || else
@@ -826,6 +845,17 @@ Parser.prototype.parseRaiseStatement = function() {
         argument = this.parseExpression()
     }
     
+    if (argument === null) {
+        argument = {
+            type: "NewExpression",
+            callee: {
+                type: "Identifier",
+                name: "Error"
+            },
+            arguments: []
+        };
+    }
+    
     return {
         type: Syntax.ThrowStatement,
         argument: argument
@@ -846,7 +876,9 @@ Parser.prototype.parseTryStatement = function() {
     var handlers = [], block = null, finalizer = null;
     
     this.expect('try');
+    this.ecstack.push([]);
     block = this.parseBlock();
+    this.ecstack.pop();
     this.expect(indent);
     
     /*
@@ -869,7 +901,9 @@ Parser.prototype.parseTryStatement = function() {
     */
     if (this.match('finally')) {
         this.consume();
+        this.ecstack.push([]);
         finalizer = this.parseBlock();
+        this.ecstack.pop();
     }
     
     return {
@@ -902,11 +936,16 @@ Parser.prototype.parseExceptStatement = function() {
         };
     }
     
+    param = param || this.parseIdentifier();
+    this.ecstack.push([]);
+    var body = this.parseBlock();
+    this.ecstack.pop();
+    
     return {
         type: Syntax.CatchClause,
-        param: param || this.parseIdentifier(),
+        param: param,
         guard: null,
-        body: this.parseBlock()
+        body: body
     };
 }
 

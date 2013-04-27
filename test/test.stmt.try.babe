@@ -1,0 +1,39 @@
+/+
+try {
+    var a = 1
+} catch (e) {
+    var a = 2
+}
+
+try {
+    var b = 1
+} catch (b) {
+    console.log(b)
+}
+
+try {
+    var b = 1
+} catch (b) {
+    console.log(b)
+} finally {
+    console.log(1)
+}
++/
+try:
+    a = 1
+except:
+    a = 2
+
+
+try:
+    b = 1
+except b:
+    console.log(b)
+
+
+try:
+    b = 1
+except b:
+    console.log(b)
+finally:
+    console.log(1)

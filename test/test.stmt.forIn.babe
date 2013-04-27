@@ -1,0 +1,84 @@
+/+
+for (k in a = {
+        'k': 1,
+        'i': 2
+    }) {
+    var v = a[k]
+    console.log(k, ':', v)
+}
+
+for (k in __obj = {
+        'k': 1,
+        'i': 2
+    }) {
+    var v = __obj[k]
+    console.log(k, ':', v)
+}
+
+for (__k in a = {
+        'k': 1,
+        'i': 2
+    }) {
+    var v = a[__k]
+    console.log(v)
+}
+
+for (__k in __arr = [
+        1,
+        2
+    ]) {
+    var v = __arr[__k]
+    console.log(v)
+}
+
+for (__k in a = [
+        1,
+        2
+    ]) {
+    var v = a[__k]
+    console.log(v)
+}
+
+var a = [
+        1,
+        2
+    ]
+for (__k in __arr = a) {
+    var v = __arr[__k]
+    console.log(v)
+}
+
+for (__k in __arr = b) {
+    var a = __arr[__k]
+    continue
+}
+
+for (__k in __arr = b) {
+    var a = __arr[__k]
+    break
+}
++/
+for k, v in a = {'k': 1, 'i': 2}:
+    console.log(k, ':', v)
+
+for k, v in {'k': 1, 'i': 2}:
+    console.log(k, ':', v)
+
+for v in a = {'k': 1, 'i': 2}:
+    console.log(v)
+
+for v in [1, 2]:
+    console.log(v)
+
+for v in a = [1, 2]:
+    console.log(v)
+
+a = [1, 2]
+for v in a:
+    console.log(v)
+
+for a in b:
+    continue
+
+for a in b:
+    break

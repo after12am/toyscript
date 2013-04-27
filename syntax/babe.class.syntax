@@ -60,13 +60,14 @@ class Person:
     say():
         print('my name is ' + this.name)
 
-class Bob extends Person:
+class Bob(Person):
     
     constructor():
         this.name = 'bob'
     
     say():
         parent.say()
+
 
 person = new Bob()
 person.say() // or new Bob().say()
