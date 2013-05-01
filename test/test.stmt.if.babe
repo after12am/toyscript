@@ -37,6 +37,26 @@ if (a) {
 if (a in b) {
     a = 1
 }
+
+a = 2
+b = [2]
+if (b.indexOf(a) !== -1) {
+    a = 4
+}
+
+a = 0
+if ([
+        2,
+        1
+    ].indexOf(a) !== -1) {
+    a = 4
+}
+
+a = 0
+b = [1]
+if (b.indexOf(a) === -1) {
+    a = 4
+}
 +/
 if a:
     a = 1
@@ -68,3 +88,17 @@ if a:
 
 if a in b:
     a = 1
+
+a = 2
+b = [2]
+if a in b:
+    a = 4
+
+a = 0
+if a in [2, 1]:
+    a = 4
+
+a = 0
+b = [1]
+if not a in b:
+    a = 4

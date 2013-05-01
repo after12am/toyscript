@@ -3030,7 +3030,7 @@ Parser.prototype.parseStatement = function() {
         }
     */
     if (this.token.kind === Token.IDENTIFIER) {
-        if (this.ecstack.current.indexOf(this.token.text) === -1) {
+        if (!this.ecstack.current[this.token.text]) {
             /*
                 a()
                 a = 1
@@ -3040,8 +3040,10 @@ Parser.prototype.parseStatement = function() {
                 a = 1 // expect: var a = 1
             */
             if (this.lookahead(1).text === '=') {
-                this.ecstack.current.push(this.token.text);
-                return this.parseVariableStatement();
+                var ident = this.token.text;
+                var v = this.parseVariableStatement();
+                this.ecstack.current[ident] = v.declarations[0].init.type;
+                return v;
             }
             
             if (this.lookahead(1).kind == Token.NEWLINE) {
@@ -3296,6 +3298,9 @@ Parser.prototype.parseExpressionStatement = function() {
     
     var expr = this.parseExpression()
     if (expr) {
+        if (expr.type === Syntax.AssignmentExpression) {
+            this.ecstack.current[expr.left.name] = expr.right.type;
+        }
         return {
             type: Syntax.ExpressionStatement,
             expression: expr
@@ -4249,7 +4254,7 @@ Parser.prototype.parseFunctionExpression = function() {
                     if (typeof subtree[i] !== 'object') continue;
                     if (subtree[i].type === Syntax.Identifier
                      && idents.indexOf(subtree[i].name) === -1
-                     && ecstack.current.indexOf(subtree[i].name) === -1) {
+                     && ecstack.current[subtree[i].name] === undefined) {
                         idents.push(subtree[i].name);
                     }
                     walk(subtree[i]);
@@ -4625,9 +4630,49 @@ Parser.prototype.parseRelationalExpression = function() {
                     }
                 }
             };
+        }
+        /*
+            b = [2]
+            if 0 in b:
+                console.log(1)
+        */
+        else if (in_operator 
+              && right.type === Syntax.Identifier 
+              && this.ecstack.current[right.name] === Syntax.ArrayExpression) {
             
+            var operator = '!==';
+            if (expr.type === Syntax.UnaryExpression
+             && expr.operator === '!') {
+                operator = '===';
+                expr = expr.argument;
+            }
             
-            
+            expr = {
+                type: Syntax.BinaryExpression,
+                operator: operator,
+                left: {
+                    type: Syntax.CallExpression,
+                    callee: {
+                        type: Syntax.MemberExpression,
+                        computed: false,
+                        object: right,
+                        property: {
+                            type: Syntax.Identifier,
+                            name: "indexOf"
+                        }
+                    },
+                    arguments: [expr]
+                },
+                right: {
+                    type: Syntax.UnaryExpression,
+                    operator: "-",
+                    argument: {
+                        type: Syntax.Literal,
+                        value: 1,
+                        raw: "1"
+                    }
+                }
+            };
         }
         /*
             if "text" typeof "string":
