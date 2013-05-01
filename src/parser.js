@@ -1409,29 +1409,53 @@ Parser.prototype.parseFunctionExpression = function() {
             }
             this.expect(')');
             
+            this.ecstack.push([]);
             this.state.push([]);
             this.state.current.push(State.InFunction);
-            var body = this.parseBlock();
+            var body = this.parseStatement();
             this.state.pop();
             
-            var idents = [];
+            var idents = [], ecstack = this.ecstack;
             // walk the subtree and find identifier node
             (function walk(subtree) {
                 for (var i in subtree) {
                     if (typeof subtree[i] !== 'object') continue;
                     if (subtree[i].type === Syntax.Identifier
-                     && idents.indexOf(subtree[i].name) === -1) {
+                     && idents.indexOf(subtree[i].name) === -1
+                     && ecstack.current.indexOf(subtree[i].name) === -1) {
                         idents.push(subtree[i].name);
                     }
                     walk(subtree[i]);
                 }
-            })(body.body[0].expression)
+            })(body.body)
+            
+            this.ecstack.pop();
             
             var params = idents.map(function(ident) {
                 return {
                     type: Syntax.Identifier,
                     name: ident
                 }
+            });
+            
+            /*
+                would parse lambda that has multiple statement
+                
+                (2):
+                    a = x * x
+                    b = a + 1
+                    b + 2
+                 |
+                 v
+                (function () {
+                    var a = x * x
+                    var b = a + 1
+                    return b + 2
+                }(2))
+            */
+            body.body.push({
+                type: Syntax.ReturnStatement,
+                argument: body.body.pop().expression
             });
             
             return {
@@ -1441,13 +1465,7 @@ Parser.prototype.parseFunctionExpression = function() {
                     id: null,
                     params: params,
                     defaults: [],
-                    body: {
-                        type: Syntax.BlockStatement,
-                        body: [{
-                            type: Syntax.ReturnStatement,
-                            argument: body.body[0].expression
-                        }]
-                    },
+                    body: body,
                     rest: null,
                     generator: false,
                     expression: false
