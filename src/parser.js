@@ -1,12 +1,12 @@
 var Parser = function(tokens) {
     this.name = 'Parser';
     this.p = 0;
-    this.state = false;
     this.token = tokens[0];
     this.tokens = tokens;
     this.indent = 0;
     this.indent_size = 4; // default of indent size for parsing
     this.ecstack = new EcStack();
+    this.state = new State();
 }
 
 Parser.prototype.consume = function(k) {
@@ -485,10 +485,11 @@ Parser.prototype.parseExpressionStatement = function() {
 */
 Parser.prototype.parseIfStatement = function() {
     
-    var alternate = null;
-    var indent = this.indent * this.indent_size;
+    var alternate = null, test, indent, consequent;
+    
+    indent = this.indent * this.indent_size;
     this.expect('if');
-    var test = this.parseExpression();
+    test = this.parseExpression();
     
     if (!this.match(':')) {
         throw new Error("{location} {message}".format({
@@ -497,7 +498,9 @@ Parser.prototype.parseIfStatement = function() {
         }));
     }
     
-    var consequent = this.parseStatement();
+    consequent = this.parseStatement();
+    
+    /*
     if (consequent.type === Syntax.ExpressionStatement) {
         if (consequent && !consequent.expression) {
             throw new Error("{location} {message}".format({
@@ -506,7 +509,7 @@ Parser.prototype.parseIfStatement = function() {
             }));
         }
     }
-    
+    */
     if (this.matchKind(Token.INDENT)) {
         if (!this.match(indent)) {
             throw new Error("{location} {message}".format({
@@ -567,10 +570,9 @@ Parser.prototype.parseIterationStatement = function() {
             }));
         }
         
-        var _state = this.state;
-        this.state = State.InIteration;
+        this.state.current.push(State.InIteration);
         var body = this.parseStatement();
-        this.state = _state;
+        this.state.pop();
         
         return {
             type: Syntax.WhileStatement,
@@ -593,10 +595,9 @@ Parser.prototype.parseIterationStatement = function() {
         this.expect('in');
         
         right = this.parseExpression();
-        var _state = this.state;
-        this.state = State.InIteration;
+        this.state.current.push(State.InIteration);
         body = this.parseStatement()
-        this.state = _state;
+        this.state.pop();
         
         if (!right || !body) {
             throw new Error("{location} {message}".format({
@@ -750,7 +751,7 @@ Parser.prototype.parseContinueStatement = function() {
         }));
     }
     
-    if (this.state !== State.InIteration) {
+    if (this.state.current.indexOf(State.InIteration) === -1) {
         throw new Error("{location} {message}".format({
             location: this.token.location.toString(),
             message: Message.IllegalContinuePosition
@@ -780,7 +781,7 @@ Parser.prototype.parseBreakStatement = function() {
         }));
     }
     
-    if (this.state !== State.InIteration) {
+    if (this.state.current.indexOf(State.InIteration) === -1) {
         throw new Error("{location} {message}".format({
             location: this.token.location.toString(),
             message: Message.IllegalBreakPosition
@@ -800,10 +801,10 @@ Parser.prototype.parseBreakStatement = function() {
 */
 Parser.prototype.parseReturnStatement = function() {
     
-    this.consume();
     var argument = null;
+    this.consume();
     
-    if (this.state !== State.InFunction) {
+    if (this.state.current.indexOf(State.InFunction) === -1) {
         throw new Error("{location} {message}".format({
             location: this.token.location.toString(),
             message: Message.IllegalReturn
@@ -872,8 +873,8 @@ Parser.prototype.parseRaiseStatement = function() {
 */
 Parser.prototype.parseTryStatement = function() {
     
-    var indent = this.indent * this.indent_size;
     var handlers = [], block = null, finalizer = null;
+    var indent = this.indent * this.indent_size;
     
     this.expect('try');
     this.ecstack.push([]);
@@ -888,12 +889,8 @@ Parser.prototype.parseTryStatement = function() {
              v
             except Identifieropt: Block
     */
-    while (this.match('except')) {
-        handlers.push(this.parseExceptStatement());
-        if (this.token.kind === Token.EOF
-         || this.token.kind === Token.NEWLINE) break;
-        this.expect(indent);
-    }
+    handlers.push(this.parseExceptStatement());
+    this.expect(indent);
     
     /*
         Finally:
@@ -1412,10 +1409,10 @@ Parser.prototype.parseFunctionExpression = function() {
             }
             this.expect(')');
             
-            var _state = this.state;
-            this.state = State.InFunction;
+            this.state.push([]);
+            this.state.current.push(State.InFunction);
             var body = this.parseBlock();
-            this.state = _state;
+            this.state.pop();
             
             var idents = [];
             // walk the subtree and find identifier node
@@ -2170,10 +2167,10 @@ Parser.prototype.parseFunctionDeclaration = function() {
     var params = this.parseFormalParameterList();
     
     this.ecstack.push([]); // stack function context
-    var _state = this.state;
-    this.state = State.InFunction;
+    this.state.push([]);
+    this.state.current.push(State.InFunction);
     var body = this.parseFunctionBody();
-    this.state = _state;
+    this.state.pop();
     this.ecstack.pop();
     
     if (body.body.length === 1 
