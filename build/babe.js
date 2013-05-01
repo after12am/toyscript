@@ -3040,10 +3040,7 @@ Parser.prototype.parseStatement = function() {
                 a = 1 // expect: var a = 1
             */
             if (this.lookahead(1).text === '=') {
-                var ident = this.token.text;
-                var v = this.parseVariableStatement();
-                this.ecstack.current[ident] = v.declarations[0].init.type;
-                return v;
+                return this.parseVariableStatement();
             }
             
             if (this.lookahead(1).kind == Token.NEWLINE) {
@@ -3224,7 +3221,9 @@ Parser.prototype.parseVariableDeclarationList = function() {
     var variables = [];
     
     while (1) {
-        variables.push(this.parseVariableDeclaration());
+        var v = this.parseVariableDeclaration();
+        variables.push(v);
+        this.ecstack.current[v.id.name] = v.init.type;
         if (!this.match(',')
          || this.token.kind === Token.EOF
          || this.token.kind === Token.NEWLINE) break;
