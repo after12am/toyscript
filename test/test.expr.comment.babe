@@ -1,0 +1,12 @@
+/+
+// this is comment
+
+/*
+    this is multiple comment
+*/
++/
+# this is comment
+
+/*
+    this is multiple comment
+*/
