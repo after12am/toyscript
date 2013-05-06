@@ -386,14 +386,14 @@ Lexer.prototype.scanIdent = function() {
         }
         break;
     }
-    
+    /*
     if (ident.substring(0, 2) === '__') {
         throw new Error("{location} {message}".format({
             location: new Location(this.line, this.column).toString(),
             message: Message.IllegalReservedIdent
         }));
     }
-    
+    */
     return new Token(Token.IDENTIFIER, ident, new Location(this.line, this.column));
 }
 

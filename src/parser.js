@@ -588,16 +588,14 @@ Parser.prototype.parseIterationStatement = function() {
     if (this.match('for')) {
         this.consume();
         
-        var exprs = [];
-        while (1) {
-            if (this.match('in')) break;
+        var exprs = [], left, right, body;;
+        while (!this.match('in')) {
             if (this.match(',')) this.consume();
             exprs.push(this.parseLeftHandSideExpression());
         }
-        var left = exprs[0], right, body;
         
+        left = exprs[0];
         this.expect('in');
-        
         right = this.parseExpression();
         this.state.current.push(State.InIteration);
         body = this.parseStatement()
@@ -610,6 +608,9 @@ Parser.prototype.parseIterationStatement = function() {
             }));
         }
         
+        /*
+            rewriting of the tree structure
+        */
         if (exprs.length === 1) {
             /*
                 would parse this:
@@ -636,42 +637,16 @@ Parser.prototype.parseIterationStatement = function() {
                 }
             }
             
-            // define index of array as __k
-            var index = '__k';
-            body.body.unshift({
-                type: Syntax.VariableDeclaration,
-                declarations: [{
-                    type: Syntax.VariableDeclarator,
-                    id: {
-                        type: Syntax.Identifier,
-                        name: exprs[0].name
-                    },
-                    init: {
-                        type: Syntax.MemberExpression,
-                        computed: true,
-                        object: {
-                            type: Syntax.Identifier,
-                            name: right.left.name
-                        },
-                        property: {
-                            type: Syntax.Identifier,
-                            name: index
-                        }
-                    }
-                }],
-                kind: 'var'
-            });
-            
-            return {
-                type: Syntax.ForInStatement,
-                left: {
-                    type: left.type, // may be identifier
-                    name: index
-                },
-                right: right,
-                body: body,
-                each: false
+            left = {
+                type: left.type, // may be identifier
+                name: '__k'
             };
+            
+            body.body = exports.parse('{0} = {1}[{2}]'.format(
+                exprs[0].name, 
+                right.left.name, 
+                '__k'
+            )).body.concat(body.body);
         }
         /*
             would parse this:
@@ -702,29 +677,11 @@ Parser.prototype.parseIterationStatement = function() {
                 }
             }
             
-            body.body.unshift({
-                type: Syntax.VariableDeclaration,
-                declarations: [{
-                    type: Syntax.VariableDeclarator,
-                    id: {
-                        type: Syntax.Identifier,
-                        name: exprs[1].name
-                    },
-                    init: {
-                        type: Syntax.MemberExpression,
-                        computed: true,
-                        object: {
-                            type: Syntax.Identifier,
-                            name: right.left.name
-                        },
-                        property: {
-                            type: Syntax.Identifier,
-                            name: exprs[0].name
-                        }
-                    }
-                }],
-                kind: 'var'
-            });
+            body.body = exports.parse('{0} = {1}[{2}]'.format(
+                exprs[1].name, 
+                right.left.name, 
+                exprs[0].name
+            )).body.concat(body.body);
         }
         
         return {
