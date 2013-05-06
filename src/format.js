@@ -1,12 +1,22 @@
 if (String.prototype.format == undefined) {
     String.prototype.format = function(args) {
-        var func;
+        /*
+            '[{time}] {message}'.format({
+                'time': '2013-01-01 00:00:00',
+                'message': 'my message'
+            })
+        */
         if (typeof args == "object") {
-            func = function(m, k) { return args[k]; }
-        } else {
-            var args = arguments;
-            func = function(m, k) { return args[parseInt(k)]; }
+            return this.replace(/\{(\w+)\}/g, function(m, k) {
+                return args[k];
+            });
         }
-        return this.replace(/\{(\w+)\}/g, func);
+        /*
+            '[{0}] {1}'.format('2013-01-01 00:00:00', 'my message')
+        */
+        var args = Array.prototype.slice.apply(arguments);
+        return ss = args.reduce(function(p, c, i){
+            return p.replace('{i}'.replace('i', i), args[i]);
+        }, this.toString());
     }
 }
