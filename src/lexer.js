@@ -551,7 +551,7 @@ Lexer.prototype.scanDigit = function() {
 */
 Lexer.prototype.scanString = function(delimiter) {
     
-    var ss = '';
+    var ss = '', token;
     var location = new Location(this.line, this.column);
     this.consume();
     
@@ -570,7 +570,9 @@ Lexer.prototype.scanString = function(delimiter) {
         this.consume();
     }
     
-    return new Token(Token.STRING, ss, new Location(this.line, this.column));
+    token = new Token(Token.STRING, ss, new Location(this.line, this.column));
+    token.delimiter = delimiter;
+    return token;
 }
 
 /*

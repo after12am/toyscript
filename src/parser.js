@@ -396,7 +396,7 @@ Parser.prototype.parseVariableDeclarationList = function() {
     while (1) {
         var v = this.parseVariableDeclaration();
         variables.push(v);
-        this.ecstack.current[v.id.name] = v.init.type;
+        this.ecstack.current[v.id.name] = v.init;
         if (!this.match(',')
          || this.token.kind === Token.EOF
          || this.token.kind === Token.NEWLINE) break;
@@ -471,7 +471,7 @@ Parser.prototype.parseExpressionStatement = function() {
     var expr = this.parseExpression()
     if (expr) {
         if (expr.type === Syntax.AssignmentExpression) {
-            this.ecstack.current[expr.left.name] = expr.right.type;
+            this.ecstack.current[expr.left.name] = expr.right;
         }
         return {
             type: Syntax.ExpressionStatement,
@@ -1010,10 +1010,36 @@ Parser.prototype.parseLiteral = function() {
     
     if (this.token.kind === Token.STRING) {
         var token = this.token;
+        var text = token.text;
         this.consume();
+        
+        /*
+            could use variable inside string
+            
+            a = 1
+            b = 1
+            "{a} + {b} = 2"
+             |
+             v
+            var a = 1
+            var b = 1
+            '1 + 1 = 2'
+        */
+        if (token.delimiter === '"') {
+            var that = this, rep = {};
+            var m = token.text.match(/{(.*?)}/g);
+            if (m) {
+                m.forEach(function(ident) {
+                    var k = ident.match(/{(.*)}/)[1];
+                    rep[k] = that.ecstack.current[k].value;
+                });
+                text = text.format(rep);
+            }
+        }
+        
         return {
             type: Syntax.Literal,
-            value: token.text
+            value: text
         };
     }
     
@@ -1767,7 +1793,7 @@ Parser.prototype.parseRelationalExpression = function() {
         */
         else if (in_operator 
               && right.type === Syntax.Identifier 
-              && this.ecstack.current[right.name] === Syntax.ArrayExpression) {
+              && this.ecstack.current[right.name].type === Syntax.ArrayExpression) {
             
             var operator = '!==';
             if (expr.type === Syntax.UnaryExpression
