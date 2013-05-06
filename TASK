@@ -11,9 +11,14 @@
 + incorporate const variables. modify typeof - http://docs.python.org/2/library/stdtypes.html
 + whether need to be indent token.
 + if delete new line token, add token of ";" after continue break return
++ testcase for illegal grammer
 
 https://developer.mozilla.org/ja/docs/JavaScript/Reference
 https://developer.mozilla.org/en-US/docs/SpiderMonkey/Parser_API
 http://www2u.biglobe.ne.jp/~oz-07ams/prog/ecma262r3/
 http://esprima.org/demo/parse.html
 http://ja.wikipedia.org/wiki/%E5%AD%97%E5%8F%A5%E8%A7%A3%E6%9E%90
+
++ result of codegen of below babe code is verbose
+for k, v in a:
+    console.log(v)
