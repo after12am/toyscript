@@ -880,7 +880,7 @@ Parser.prototype.parseTryStatement = function() {
 */
 Parser.prototype.parseExceptStatement = function() {
     
-    var param = null;
+    var param = null, body;
     this.expect('except');
     
     /*
@@ -896,7 +896,7 @@ Parser.prototype.parseExceptStatement = function() {
     
     param = param || this.parseIdentifier();
     this.ecstack.push([]);
-    var body = this.parseBlock();
+    body = this.parseBlock();
     this.ecstack.pop();
     
     return {
@@ -1012,7 +1012,6 @@ Parser.prototype.parseLiteral = function() {
         var token = this.token;
         var text = token.text;
         this.consume();
-        
         /*
             could use variable inside string
             
@@ -1036,7 +1035,6 @@ Parser.prototype.parseLiteral = function() {
                 text = text.format(rep);
             }
         }
-        
         return {
             type: Syntax.Literal,
             value: text
@@ -1079,7 +1077,6 @@ Parser.prototype.parseElementList = function() {
     var elements = [];
     while (!this.match(']')) {
         if (this.match(',')) this.consume();
-        
         /*
             we can parse source program 
             even if new line token has appeared in array initializers.
@@ -1094,7 +1091,6 @@ Parser.prototype.parseElementList = function() {
             this.consume();
             continue;
         }
-        
         elements.push(this.parseAssignmentExpression());
     }
     return elements;
@@ -1230,13 +1226,8 @@ Parser.prototype.parseGroupingOperator = function() {
         new MemberExpression Arguments
 */
 Parser.prototype.parseMemberExpression = function(allow_call) {
-    
-    if (this.match('new')) {
-        return this.parseNewExpression();
-    }
-    
+    if (this.match('new')) return this.parseNewExpression();
     var expr = this.parseFunctionExpression() || this.parsePrimaryExpression();
-    
     while (1) {
         if (this.token.kind === Token.EOF
          || this.token.kind === Token.NEWLINE) break;
@@ -1258,7 +1249,6 @@ Parser.prototype.parseMemberExpression = function(allow_call) {
         
         break;
     }
-    
     return expr;
 }
 
@@ -1397,12 +1387,11 @@ Parser.prototype.parseFunctionExpression = function() {
             this.expect(')');
             
             this.ecstack.push([]);
-            this.state.push([]);
-            this.state.current.push(State.InFunction);
+            this.state.push([State.InFunction]);
             var body = this.parseStatement();
             this.state.pop();
-            
             var idents = [], ecstack = this.ecstack;
+            
             // walk the subtree and find identifier node
             (function walk(subtree) {
                 for (var i in subtree) {
@@ -1414,8 +1403,7 @@ Parser.prototype.parseFunctionExpression = function() {
                     }
                     walk(subtree[i]);
                 }
-            })(body.body)
-            
+            })(body.body);
             this.ecstack.pop();
             
             var params = idents.map(function(ident) {
@@ -1484,14 +1472,11 @@ Parser.prototype.parseLeftHandSideExpression = function() {
         LeftHandSideExpression [LineTerminator 無し] --
 */
 Parser.prototype.parsePostfixExpression = function() {
-    
     var expr = this.parseLeftHandSideExpression();
-    
     // postfix increment operator
     if (this.match('++') || this.match('--')) {
         var token = this.token;
         this.consume();
-        
         if (expr.type === Syntax.ObjectExpression
          || expr.type === Syntax.ArrayExpression) {
             if (token.text === '++') {
@@ -1507,7 +1492,6 @@ Parser.prototype.parsePostfixExpression = function() {
                 }));
             }
         }
-        
         return {
             type: Syntax.UpdateExpression,
             operator: token.text,
@@ -1515,7 +1499,6 @@ Parser.prototype.parsePostfixExpression = function() {
             prefix: false
         };
     }
-    
     return expr;
 }
 
@@ -1612,9 +1595,7 @@ Parser.prototype.parseUnaryExpression = function() {
         MultiplicativeExpression % UnaryExpression
 */
 Parser.prototype.parseMultiplicativeExpression = function() {
-    
     var expr = this.parseUnaryExpression();
-    
     // 11.5.1 - 11.5.3
     while (this.match('/') || this.match('*') || this.match('%')) {
         var token = this.token;
@@ -1645,9 +1626,7 @@ Parser.prototype.parseMultiplicativeExpression = function() {
         AdditiveExpression - MultiplicativeExpression
 */
 Parser.prototype.parseAdditiveExpression = function() {
-    
     var expr = this.parseMultiplicativeExpression();
-    
     // 11.6.1 - 11.6.2
     while (this.match('+') || this.match('-')) {
         var token = this.token;
@@ -1672,9 +1651,7 @@ Parser.prototype.parseAdditiveExpression = function() {
         ShiftExpression >>> AdditiveExpression
 */
 Parser.prototype.parseShiftExpression = function() {
-    
     var expr = this.parseAdditiveExpression();
-    
     while (this.match('<<') || this.match('>>') || this.match('>>>')) {
         var token = this.token;
         this.consume();
@@ -1834,7 +1811,6 @@ Parser.prototype.parseRelationalExpression = function() {
                 console.log("this is string")
         */
         else if (token.text === 'typeof') {
-            
             /*
                 ShiftExpression :: one of 
 
@@ -1892,7 +1868,6 @@ Parser.prototype.parseEqualityExpression = function() {
     while (this.match('==') || this.match('!=') || this.match('is')) {
         var token = this.token, operator;
         this.consume();
-        
         switch (token.text) {
         case 'is':
             operator = '==';
@@ -1906,7 +1881,6 @@ Parser.prototype.parseEqualityExpression = function() {
             operator = token.text;
             break;
         }
-        
         expr = {
             type: Syntax.BinaryExpression,
             operator: operator,
@@ -1937,9 +1911,7 @@ Parser.prototype.parseEqualityExpression = function() {
         BitwiseANDExpression & EqualityExpression
 */
 Parser.prototype.parseBitwiseANDExpression = function() {
-    
     var expr = this.parseEqualityExpression();
-    
     while (this.match('&')) {
         var token = this.token;
         this.consume();
@@ -1961,9 +1933,7 @@ Parser.prototype.parseBitwiseANDExpression = function() {
         BitwiseXORExpression ^ BitwiseANDExpression
 */
 Parser.prototype.parseBitwiseXORExpression = function() {
-    
     var expr = this.parseBitwiseANDExpression();
-    
     while (this.match('^')) {
         var token = this.token;
         this.consume();
@@ -1985,9 +1955,7 @@ Parser.prototype.parseBitwiseXORExpression = function() {
         BitwiseORExpression | BitwiseXORExpression
 */
 Parser.prototype.parseBitwiseORExpression = function() {
-    
     var expr = this.parseBitwiseXORExpression();
-    
     while (this.match('|')) {
         var token = this.token;
         this.consume();
@@ -2009,9 +1977,7 @@ Parser.prototype.parseBitwiseORExpression = function() {
         LogicalANDExpression and BitwiseORExpression
 */
 Parser.prototype.parseLogicalANDExpression = function() {
-    
     var expr = this.parseBitwiseORExpression();
-    
     while (this.match('and')) {
         this.consume();
         expr = {
@@ -2032,9 +1998,7 @@ Parser.prototype.parseLogicalANDExpression = function() {
         LogicalORExpression or LogicalANDExpression
 */
 Parser.prototype.parseLogicalORExpression = function() {
-    
     var expr = this.parseLogicalANDExpression();
-    
     while (this.match('or')) {
         this.consume();
         expr = {
@@ -2059,9 +2023,7 @@ Parser.prototype.parseLogicalORExpression = function() {
         LogicalORExpression if LogicalORExpression else LogicalORExpression
 */
 Parser.prototype.parseConditionalExpression = function() {
-    
     var consequent = this.parseLogicalORExpression();
-    
     if (this.match('if')) {
         this.consume();
         var expr = this.parseLogicalORExpression();
@@ -2091,10 +2053,7 @@ Parser.prototype.parseConditionalExpression = function() {
         LeftHandSideExpression AssignmentOperator AssignmentExpression
 */
 Parser.prototype.parseAssignmentExpression = function() {
-    
     var expr = this.parseConditionalExpression();
-    
-    // AssignmentOperator
     if (this.matchAssign(this.token.text)) {
         var assign = this.token.text;
         this.consume();
@@ -2150,9 +2109,7 @@ Parser.prototype.matchAssign = function(op) {
         Expression , AssignmentExpression
 */
 Parser.prototype.parseExpression = function() {
-    
     var expr = this.parseAssignmentExpression();
-    
     if (this.match(',')) {
         expr = {
             type: Syntax.SequenceExpression,
@@ -2206,22 +2163,15 @@ Parser.prototype.parseComment = function() {
         function Identifier ( FormalParameterListopt ) { FunctionBody }
 */
 Parser.prototype.parseFunctionDeclaration = function() {
-    
     this.expect('def');
     var id = this.parseIdentifier();
     var params = this.parseFormalParameterList();
-    
-    this.ecstack.push([]); // stack function context
-    this.state.push([]);
-    this.state.current.push(State.InFunction);
     var body = this.parseFunctionBody();
-    this.state.pop();
-    this.ecstack.pop();
-    
     if (body.body.length === 1 
-     && body.body[0].type === Syntax.EmptyStatement) body.body = [];
+     && body.body[0].type === Syntax.EmptyStatement) {
+        body.body = [];
+    }
     body.body = params.init.concat(body.body);
-    
     return {
         type: Syntax.FunctionDeclaration,
         id: id,
@@ -2242,9 +2192,7 @@ Parser.prototype.parseFunctionDeclaration = function() {
         FormalParameterList , AssignmentExpression
 */
 Parser.prototype.parseFormalParameterList = function() {
-    
     var params = [], init = [];
-    
     this.expect('(');
     while (!this.match(')')) {
         if (this.match(',')) this.consume();
@@ -2258,7 +2206,6 @@ Parser.prototype.parseFormalParameterList = function() {
         }
     }
     this.expect(')');
-    
     return {
         params: params,
         init: init
@@ -2292,7 +2239,12 @@ Parser.prototype.parseDefaultArgument = function(left, right) {
         SourceElements
 */
 Parser.prototype.parseFunctionBody = function() {
-    return this.parseBlock();
+    this.ecstack.push([]);
+    this.state.push([State.InFunction]);
+    var body = this.parseBlock();
+    this.state.pop();
+    this.ecstack.pop();
+    return body;
 }
 
 /*
