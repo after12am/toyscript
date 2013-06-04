@@ -9,6 +9,13 @@ var Lexer = function(source) {
     this.c = this.source[this.p];
 }
 
+Lexer.prototype.assert = function(message) {
+    throw new Error("{0} {1}".format([
+        new Location(this.line, this.column).toString(),
+        message
+    ]));
+}
+
 Lexer.prototype.consume = function() {
     if (this.c == '\n' || this.c == '\r') {
         this.column = 1;
@@ -132,10 +139,7 @@ Lexer.prototype.tokenize = function() {
         if (this.matchDigit(this.c)) {
             if (this.lookahead(1) !== Token.EOF
              && this.matchLetter(this.lookahead(1))) {
-                 throw new Error("{location} {message}".format({
-                    location: new Location(this.line, this.column).toString(),
-                    message: Message.IllegalIdent
-                }));
+                 this.assert(Message.IllegalIdent);
             }
             if (token = this.scanDigit()) {
                 tokens.push(token);
@@ -160,11 +164,7 @@ Lexer.prototype.tokenize = function() {
             continue;
         }
         
-        throw new Error("{location} {message}".format({
-            location: new Location(this.line, this.column).toString(),
-            message: Message.UnknownToken
-        }));
-        
+        this.assert(Message.UnknownToken);
         this.consume();
     }
     
@@ -241,12 +241,7 @@ Lexer.prototype.scanComment = function() {
         this.consume();
         var comment = '';
         while (this.c + this.lookahead(1) != '*/') {
-            if (this.c === Token.EOF) {
-                throw new Error("{location} {message}".format({
-                    location: new Location(this.line, this.column || 1).toString(),
-                    message: Message.IllegalComment
-                }));
-            }
+            if (this.c === Token.EOF) this.assert(Message.IllegalComment);
             comment += this.c;
             this.consume();
         }
@@ -388,10 +383,7 @@ Lexer.prototype.scanIdent = function() {
     }
     /*
     if (ident.substring(0, 2) === '__') {
-        throw new Error("{location} {message}".format({
-            location: new Location(this.line, this.column).toString(),
-            message: Message.IllegalReservedIdent
-        }));
+        this.assert(Message.IllegalReservedIdent);
     }
     */
     return new Token(Token.IDENTIFIER, ident, new Location(this.line, this.column));
@@ -557,10 +549,7 @@ Lexer.prototype.scanString = function(delimiter) {
     
     while (1) {
         if (this.c === Token.EOF || this.matchLineTerminator(this.c)) {
-            throw new Error("{location} {message}".format({
-                location: new Location(this.line, this.column).toString(),
-                message: Message.UnexpectedString
-            }));
+            this.assert(Message.UnexpectedString);
         }
         if (this.c === delimiter) {
             this.consume();
