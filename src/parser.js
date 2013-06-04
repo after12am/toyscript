@@ -230,8 +230,8 @@ Parser.prototype.parseStatement = function() {
     case Token.NEWLINE: return this.parseEmptyStatement();
     case Token.KEYWORDS.PASS: return this.parsePassStatement();
     case Token.KEYWORDS.IF: return this.parseIfStatement();
-    case Token.KEYWORDS.WHILE: return this.parseIterationStatement(); 
-    case Token.KEYWORDS.FOR: return this.parseIterationStatement();
+    case Token.KEYWORDS.WHILE: return this.parseWhileStatement(); 
+    case Token.KEYWORDS.FOR: return this.parseForStatement();
     case Token.KEYWORDS.CONTINUE: return this.parseContinueStatement();
     case Token.KEYWORDS.BREAK: return this.parseBreakStatement();
     case Token.KEYWORDS.RETURN: return this.parseReturnStatement();
@@ -560,138 +560,136 @@ Parser.prototype.parseIfStatement = function() {
         while Expression: Statement
         for LeftHandSideExpression in Expression: Statement
 */
-Parser.prototype.parseIterationStatement = function() {
-    
-    if (this.match('while')) {
-        this.consume();
-        
-        try {
-            var test = this.parseExpression();
-        } catch (e) {
-            throw new Error("{location} {message}".format({
-                location: this.token.location.toString(),
-                message: Message.IllegalWhile
-            }));
-        }
-        
+Parser.prototype.parseWhileStatement = function() {
+    var test, body;
+    this.consume();
+    try {
+        test = this.parseExpression();
         this.state.current.push(State.InIteration);
-        var body = this.parseStatement();
+        body = this.parseStatement();
         this.state.pop();
-        
-        return {
-            type: Syntax.WhileStatement,
-            test: test,
-            body: body
-        };
+    } catch (e) {
+        throw new Error("{location} {message}".format({
+            location: this.token.location.toString(),
+            message: Message.IllegalWhile
+        }));
+    }
+    return {
+        type: Syntax.WhileStatement,
+        test: test,
+        body: body
+    };
+}
+
+Parser.prototype.parseForStatement = function() {
+    
+    var exprs = [], left, right, body;
+    
+    this.consume();
+    
+    while (!this.match('in')) {
+        if (this.match(',')) this.consume();
+        exprs.push(this.parseLeftHandSideExpression());
     }
     
-    if (this.match('for')) {
-        this.consume();
-        
-        var exprs = [], left, right, body;;
-        while (!this.match('in')) {
-            if (this.match(',')) this.consume();
-            exprs.push(this.parseLeftHandSideExpression());
-        }
-        
-        left = exprs[0];
-        this.expect('in');
-        right = this.parseExpression();
-        this.state.current.push(State.InIteration);
-        body = this.parseStatement()
-        this.state.pop();
-        
-        if (!right || !body) {
-            throw new Error("{location} {message}".format({
-                location: this.token.location.toString(),
-                message: Message.IllegalFor
-            }));
-        }
-        
-        /*
-            rewriting of the tree structure
-        */
-        if (exprs.length === 1) {
-            /*
-                would parse this:
-                
-                    for v in [1, 2]:
-                        console.log(v)
-                    
-                    for v in a = [1, 2]:
-                        console.log(v)
-                    
-                    a = [1, 2]
-                    for v in a:
-                        console.log(v)
-            */
-            if (right.type !== Syntax.AssignmentExpression) {
-                right = {
-                    type: Syntax.AssignmentExpression,
-                    operator: "=",
-                    left: {
-                        type: "Identifier",
-                        name: "__arr"
-                    },
-                    right: right
-                }
-            }
-            
-            left = {
-                type: left.type, // may be identifier
-                name: '__k'
-            };
-            
-            body.body = exports.parse('{0} = {1}[{2}]'.format(
-                exprs[0].name, 
-                right.left.name, 
-                '__k'
-            )).body.concat(body.body);
-        }
+    left = exprs[0];
+    this.expect('in');
+    right = this.parseExpression();
+    
+    this.state.current.push(State.InIteration);
+    body = this.parseStatement()
+    this.state.pop();
+    
+    if (!right || !body) {
+        throw new Error("{location} {message}".format({
+            location: this.token.location.toString(),
+            message: Message.IllegalFor
+        }));
+    }
+    
+    /*
+        rewriting of the tree structure
+    */
+    if (exprs.length === 1) {
         /*
             would parse this:
+            
+                for v in [1, 2]:
+                    console.log(v)
                 
-                for k, v in a = {'k': 1, 'i': 2}:
-                    console.log(k, ':', v)
+                for v in a = [1, 2]:
+                    console.log(v)
                 
-                for k, v in {'k': 1, 'i': 2}:
-                    console.log(k, ':', v)
-                
-                for v in a = {'k': 1, 'i': 2}:
+                a = [1, 2]
+                for v in a:
                     console.log(v)
         */
-        else if (exprs.length === 2) {
-            /*
-                part of :
-                    a = {'arg': 1}
-            */
-            if (right.type !== Syntax.AssignmentExpression) {
-                right = {
-                    type: Syntax.AssignmentExpression,
-                    operator: "=",
-                    left: {
-                        type: "Identifier",
-                        name: "__obj"
-                    },
-                    right: right
-                }
+        if (right.type !== Syntax.AssignmentExpression) {
+            right = {
+                type: Syntax.AssignmentExpression,
+                operator: "=",
+                left: {
+                    type: "Identifier",
+                    name: "__arr"
+                },
+                right: right
             }
-            
-            body.body = exports.parse('{0} = {1}[{2}]'.format(
-                exprs[1].name, 
-                right.left.name, 
-                exprs[0].name
-            )).body.concat(body.body);
         }
         
-        return {
-            type: Syntax.ForInStatement,
-            left: left,
-            right: right,
-            body: body,
-            each: false
+        left = {
+            type: left.type, // may be identifier
+            name: '__k'
         };
+        
+        body.body = exports.parse('{0} = {1}[{2}]'.format(
+            exprs[0].name, 
+            right.left.name, 
+            '__k'
+        )).body.concat(body.body);
     }
+    /*
+        would parse this:
+            
+            for k, v in a = {'k': 1, 'i': 2}:
+                console.log(k, ':', v)
+            
+            for k, v in {'k': 1, 'i': 2}:
+                console.log(k, ':', v)
+            
+            for v in a = {'k': 1, 'i': 2}:
+                console.log(v)
+    */
+    else if (exprs.length === 2) {
+        /*
+            part of :
+                a = {'arg': 1}
+        */
+        if (right.type !== Syntax.AssignmentExpression) {
+            right = {
+                type: Syntax.AssignmentExpression,
+                operator: "=",
+                left: {
+                    type: "Identifier",
+                    name: "__obj"
+                },
+                right: right
+            }
+        }
+        
+        body.body = exports.parse('{0} = {1}[{2}]'.format(
+            exprs[1].name, 
+            right.left.name, 
+            exprs[0].name
+        )).body.concat(body.body);
+    }
+    
+    return {
+        type: Syntax.ForInStatement,
+        left: left,
+        right: right,
+        body: body,
+        each: false
+    };
 }
 
 /*
