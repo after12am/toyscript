@@ -16,6 +16,18 @@ function func(a, b) {
     b = b || {'a': 1}
     return a
 }
+
+function test() {
+    print()
+    print()
+}
+
+function test() {
+    function test() {
+        print()
+    }
+    print()
+}
 +/
 def func():
     return
@@ -28,3 +40,12 @@ def func(a, b):
 
 def func(a = [1], b = {"a":1}):
     return a
+
+def test():
+    print()
+    print()
+
+def test():
+    def test():
+        print()
+    print()

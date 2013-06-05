@@ -96,6 +96,7 @@ Parser.prototype.lookback = function(k) {
 */
 Parser.prototype.parseProgram = function() {
     this.p = 0;
+    this.expect(this.indent = 0);
     // update indent size for parsing
     for (var i = 1; i < this.tokens.length; i++) {
         if (this.lookahead(i).kind === Token.INDENT 
@@ -133,6 +134,13 @@ Parser.prototype.parseSourceElements = function() {
             }
             nodes.push(node);
         }
+        
+        if (this.token.kind === Token.INDENT) {
+            if (this.state.current.indexOf(State.InFunction) !== -1) {
+                break;
+            }
+            this.expect(0);
+        }
     }
     return nodes;
 }
@@ -145,9 +153,6 @@ Parser.prototype.parseSourceElements = function() {
         FunctionDeclaration
 */
 Parser.prototype.parseSourceElement = function() {
-    
-    this.expect(this.indent = 0);
-    
     /*
         The expected order is <NEWLINE>|<INDENT>|<EOF>
         
@@ -355,8 +360,15 @@ Parser.prototype.parseStatementList = function() {
             continue;
         }
         
-        if (expr = this.parseStatement()) {
+        if (expr = this.parseSourceElement()) {
             exprs.push(expr);
+        }
+        
+        if (this.matchKind(Token.INDENT)) {
+            if (this.token.text < indent) break;
+            // if (this.token.text > indent) this.assert(Message.IllegalIndentSize);
+            // this.consume();
+            // continue;
         }
     }
     
@@ -1229,7 +1241,7 @@ Parser.prototype.parseCallMember = function(object) {
     return {
         type: Syntax.CallExpression,
         callee: object,
-        'arguments': this.parseArguments()
+        arguments: this.parseArguments()
     };
 }
 
@@ -2087,7 +2099,8 @@ Parser.prototype.parseFunctionDeclaration = function() {
     this.expect('def');
     var id = this.parseIdentifier();
     var params = this.parseFormalParameterList();
-    var body = this.parseFunctionBody();
+    var body = this.parseFunctionBody()[0];
+    
     if (body.body.length === 1 
      && body.body[0].type === Syntax.EmptyStatement) {
         body.body = [];
@@ -2160,12 +2173,13 @@ Parser.prototype.parseDefaultArgument = function(left, right) {
         SourceElements
 */
 Parser.prototype.parseFunctionBody = function() {
+    var body;
     this.ecstack.push([]);
     this.state.push([State.InFunction]);
-    var body = this.parseBlock();
+    body = this.parseSourceElements();
     this.state.pop();
     this.ecstack.pop();
-    return body;
+    return body
 }
 
 /*
