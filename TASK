@@ -7,7 +7,6 @@
 + 13.2 Creating Function Objects
 + 15 Native ECMAScript Objects
 + to consider whether or not I plan to use underscore.js
-+ incorporate class statement
 + incorporate const variables. modify typeof - http://docs.python.org/2/library/stdtypes.html
 + whether need to be indent token.
 + if delete new line token, add token of ";" after continue break return

@@ -44,7 +44,7 @@ exports.compile = function(source) {
 */
 exports.run = function() {
     if (executable) {
-        return eval(executable);
+        return new Function(executable)();
     }
     throw new Error("has to call after compile. confirm whether compile() have been called");
 }
@@ -53,7 +53,7 @@ exports.run = function() {
     execute babescript
 */
 exports.interpret = function(source) {
-    return eval(exports.compile(source));
+    return new Function(exports.compile(source))();
 }
 // src/compiler.js
 var Compiler = function(source) {
@@ -2160,6 +2160,13 @@ var Lexer = function(source) {
     this.c = this.source[this.p];
 }
 
+Lexer.prototype.assert = function(message) {
+    throw new Error("{0} {1}".format([
+        new Location(this.line, this.column).toString(),
+        message
+    ]));
+}
+
 Lexer.prototype.consume = function() {
     if (this.c == '\n' || this.c == '\r') {
         this.column = 1;
@@ -2283,10 +2290,7 @@ Lexer.prototype.tokenize = function() {
         if (this.matchDigit(this.c)) {
             if (this.lookahead(1) !== Token.EOF
              && this.matchLetter(this.lookahead(1))) {
-                 throw new Error("{location} {message}".format({
-                    location: new Location(this.line, this.column).toString(),
-                    message: Message.IllegalIdent
-                }));
+                 this.assert(Message.IllegalIdent);
             }
             if (token = this.scanDigit()) {
                 tokens.push(token);
@@ -2311,11 +2315,7 @@ Lexer.prototype.tokenize = function() {
             continue;
         }
         
-        throw new Error("{location} {message}".format({
-            location: new Location(this.line, this.column).toString(),
-            message: Message.UnknownToken
-        }));
-        
+        this.assert(Message.UnknownToken);
         this.consume();
     }
     
@@ -2392,12 +2392,7 @@ Lexer.prototype.scanComment = function() {
         this.consume();
         var comment = '';
         while (this.c + this.lookahead(1) != '*/') {
-            if (this.c === Token.EOF) {
-                throw new Error("{location} {message}".format({
-                    location: new Location(this.line, this.column || 1).toString(),
-                    message: Message.IllegalComment
-                }));
-            }
+            if (this.c === Token.EOF) this.assert(Message.IllegalComment);
             comment += this.c;
             this.consume();
         }
@@ -2539,10 +2534,7 @@ Lexer.prototype.scanIdent = function() {
     }
     /*
     if (ident.substring(0, 2) === '__') {
-        throw new Error("{location} {message}".format({
-            location: new Location(this.line, this.column).toString(),
-            message: Message.IllegalReservedIdent
-        }));
+        this.assert(Message.IllegalReservedIdent);
     }
     */
     return new Token(Token.IDENTIFIER, ident, new Location(this.line, this.column));
@@ -2708,10 +2700,7 @@ Lexer.prototype.scanString = function(delimiter) {
     
     while (1) {
         if (this.c === Token.EOF || this.matchLineTerminator(this.c)) {
-            throw new Error("{location} {message}".format({
-                location: new Location(this.line, this.column).toString(),
-                message: Message.UnexpectedString
-            }));
+            this.assert(Message.UnexpectedString);
         }
         if (this.c === delimiter) {
             this.consume();
@@ -2876,30 +2865,39 @@ Parser.prototype.matchKind = function(kind) {
     throw error when argument does not match value of token
 */
 Parser.prototype.expect = function(value) {
-    if (this.token.text !== value) {
-        throw new Error("{location} {message} {unexpected} expecting {expected}".format({
-            location: this.token.location.toString(), 
-            message: Message.UnexpectedToken,
-            unexpected: this.token.text,
-            expected: value
-        }));
+    if (this.token.text === value) {
+        this.consume();
+        return;
     }
-    this.consume();
+    throw new Error("{0} {1} {2} expecting {3}".format([
+        this.token.location.toString(), 
+        Message.UnexpectedToken,
+        this.token.text,
+        value
+    ]));
+}
+
+Parser.prototype.assert = function(message) {
+    throw new Error("{0} {1}".format([
+        this.token.location.toString(),
+        message
+    ]));
 }
 
 /*
     throw error when argument does not match kind of token
 */
 Parser.prototype.expectKind = function(value) {
-    if (this.token.kind !== value) {
-        throw new Error("{location} {message} {unexpected} expecting {expected}".format({
-            location: this.token.location.toString(), 
-            message: Message.UnexpectedToken,
-            unexpected: this.token.kind,
-            expected: value
-        }));
+    if (this.token.kind === value) {
+        this.consume();
+        return;
     }
-    this.consume();
+    throw new Error("{0} {1} {2} expecting {3}".format([
+        this.token.location.toString(), 
+        Message.UnexpectedToken,
+        this.token.kind,
+        value
+    ]));
 }
 
 /*
@@ -2926,6 +2924,7 @@ Parser.prototype.lookback = function(k) {
 */
 Parser.prototype.parseProgram = function() {
     this.p = 0;
+    this.expect(this.indent = 0);
     // update indent size for parsing
     for (var i = 1; i < this.tokens.length; i++) {
         if (this.lookahead(i).kind === Token.INDENT 
@@ -2957,11 +2956,21 @@ Parser.prototype.parseSourceElements = function() {
                 a = 1<EOF>
         */
         if (this.matchKind(Token.EOF)) break;
-        if (node = this.parseSourceElement()) {
+        if (this.match('class')) {
+            node = this.parseClassDeclaration();
+            nodes = nodes.concat(node);
+        } else if (node = this.parseSourceElement()) {
             if (node.type === Syntax.PassStatement) {
                 node.type = Syntax.EmptyStatement;
             }
             nodes.push(node);
+        }
+        
+        if (this.token.kind === Token.INDENT) {
+            if (this.state.current.indexOf(State.InFunction) !== -1) {
+                break;
+            }
+            this.expect(0);
         }
     }
     return nodes;
@@ -2972,12 +2981,10 @@ Parser.prototype.parseSourceElements = function() {
     
     SourceElement:
         Statement
+        ClassDeclaration
         FunctionDeclaration
 */
 Parser.prototype.parseSourceElement = function() {
-    
-    this.expect(this.indent = 0);
-    
     /*
         The expected order is <NEWLINE>|<INDENT>|<EOF>
         
@@ -3056,10 +3063,7 @@ Parser.prototype.parseStatement = function() {
             }
             
             if (this.lookahead(1).kind == Token.NEWLINE) {
-                throw new Error("{location} {message}".format({
-                    location: this.token.location.toString(),
-                    message: Message.IllegalIdentInitialize
-                }));
+                this.assert(Message.IllegalIdentInitialize);
             }
         }
     }
@@ -3069,8 +3073,8 @@ Parser.prototype.parseStatement = function() {
     case Token.NEWLINE: return this.parseEmptyStatement();
     case Token.KEYWORDS.PASS: return this.parsePassStatement();
     case Token.KEYWORDS.IF: return this.parseIfStatement();
-    case Token.KEYWORDS.WHILE: return this.parseIterationStatement(); 
-    case Token.KEYWORDS.FOR: return this.parseIterationStatement();
+    case Token.KEYWORDS.WHILE: return this.parseWhileStatement(); 
+    case Token.KEYWORDS.FOR: return this.parseForStatement();
     case Token.KEYWORDS.CONTINUE: return this.parseContinueStatement();
     case Token.KEYWORDS.BREAK: return this.parseBreakStatement();
     case Token.KEYWORDS.RETURN: return this.parseReturnStatement();
@@ -3139,10 +3143,7 @@ Parser.prototype.parseBlock = function() {
         };
     }
     
-    throw new Error("{location} {message}".format({
-        location: this.token.location.toString(),
-        message: Message.IllegalBlock
-    }));
+    this.assert(Message.IllegalBlock);
 }
 
 /*
@@ -3186,18 +3187,20 @@ Parser.prototype.parseStatementList = function() {
         if (this.matchKind(Token.EOF)) break;
         if (this.matchKind(Token.INDENT)) {
             if (this.token.text < indent) break;
-            if (this.token.text > indent) {
-                throw new Error("{location} {message}".format({
-                    location: this.token.location.toString(),
-                    message: Message.IllegalIndentSize
-                }));
-            }
+            if (this.token.text > indent) this.assert(Message.IllegalIndentSize);
             this.consume();
             continue;
         }
         
-        if (expr = this.parseStatement()) {
+        if (expr = this.parseSourceElement()) {
             exprs.push(expr);
+        }
+        
+        if (this.matchKind(Token.INDENT)) {
+            if (this.token.text < indent) break;
+            if (this.token.text > indent) this.assert(Message.IllegalIndentSize);
+            this.consume();
+            continue;
         }
     }
     
@@ -3334,31 +3337,20 @@ Parser.prototype.parseIfStatement = function() {
     this.expect('if');
     test = this.parseExpression();
     
-    if (!this.match(':')) {
-        throw new Error("{location} {message}".format({
-            location: this.token.location.toString(),
-            message: Message.IllegalIf
-        }));
-    }
+    if (!this.match(':')) this.assert(Message.IllegalIf);
     
     consequent = this.parseStatement();
     
     /*
     if (consequent.type === Syntax.ExpressionStatement) {
         if (consequent && !consequent.expression) {
-            throw new Error("{location} {message}".format({
-                location: this.token.location.toString(),
-                message: Message.IllegalIf
-            }));
+            this.assert(Message.IllegalIf);
         }
     }
     */
     if (this.matchKind(Token.INDENT)) {
         if (!this.match(indent)) {
-            throw new Error("{location} {message}".format({
-                location: this.token.location.toString(),
-                message: Message.IllegalIndentSize
-            }));
+            this.assert(Message.IllegalIndentSize);
         }
     }
     
@@ -3399,138 +3391,128 @@ Parser.prototype.parseIfStatement = function() {
         while Expression: Statement
         for LeftHandSideExpression in Expression: Statement
 */
-Parser.prototype.parseIterationStatement = function() {
-    
-    if (this.match('while')) {
-        this.consume();
-        
-        try {
-            var test = this.parseExpression();
-        } catch (e) {
-            throw new Error("{location} {message}".format({
-                location: this.token.location.toString(),
-                message: Message.IllegalWhile
-            }));
-        }
-        
+Parser.prototype.parseWhileStatement = function() {
+    var test, body;
+    this.consume();
+    try {
+        test = this.parseExpression();
         this.state.current.push(State.InIteration);
-        var body = this.parseStatement();
+        body = this.parseStatement();
         this.state.pop();
-        
-        return {
-            type: Syntax.WhileStatement,
-            test: test,
-            body: body
-        };
+    } catch (e) {
+        this.assert(Message.IllegalWhile);
+    }
+    return {
+        type: Syntax.WhileStatement,
+        test: test,
+        body: body
+    };
+}
+
+Parser.prototype.parseForStatement = function() {
+    
+    var exprs = [], left, right, body;
+    
+    this.consume();
+    
+    while (!this.match('in')) {
+        if (this.match(',')) this.consume();
+        exprs.push(this.parseLeftHandSideExpression());
     }
     
-    if (this.match('for')) {
-        this.consume();
-        
-        var exprs = [], left, right, body;;
-        while (!this.match('in')) {
-            if (this.match(',')) this.consume();
-            exprs.push(this.parseLeftHandSideExpression());
-        }
-        
-        left = exprs[0];
-        this.expect('in');
-        right = this.parseExpression();
-        this.state.current.push(State.InIteration);
-        body = this.parseStatement()
-        this.state.pop();
-        
-        if (!right || !body) {
-            throw new Error("{location} {message}".format({
-                location: this.token.location.toString(),
-                message: Message.IllegalFor
-            }));
-        }
-        
-        /*
-            rewriting of the tree structure
-        */
-        if (exprs.length === 1) {
-            /*
-                would parse this:
-                
-                    for v in [1, 2]:
-                        console.log(v)
-                    
-                    for v in a = [1, 2]:
-                        console.log(v)
-                    
-                    a = [1, 2]
-                    for v in a:
-                        console.log(v)
-            */
-            if (right.type !== Syntax.AssignmentExpression) {
-                right = {
-                    type: Syntax.AssignmentExpression,
-                    operator: "=",
-                    left: {
-                        type: "Identifier",
-                        name: "__arr"
-                    },
-                    right: right
-                }
-            }
-            
-            left = {
-                type: left.type, // may be identifier
-                name: '__k'
-            };
-            
-            body.body = exports.parse('{0} = {1}[{2}]'.format(
-                exprs[0].name, 
-                right.left.name, 
-                '__k'
-            )).body.concat(body.body);
-        }
+    left = exprs[0];
+    this.expect('in');
+    right = this.parseExpression();
+    
+    this.state.current.push(State.InIteration);
+    body = this.parseStatement()
+    this.state.pop();
+    
+    if (!right || !body) this.assert(Message.IllegalFor);
+    
+    /*
+        rewriting of the tree structure
+    */
+    if (exprs.length === 1) {
         /*
             would parse this:
+            
+                for v in [1, 2]:
+                    console.log(v)
                 
-                for k, v in a = {'k': 1, 'i': 2}:
-                    console.log(k, ':', v)
+                for v in a = [1, 2]:
+                    console.log(v)
                 
-                for k, v in {'k': 1, 'i': 2}:
-                    console.log(k, ':', v)
-                
-                for v in a = {'k': 1, 'i': 2}:
+                a = [1, 2]
+                for v in a:
                     console.log(v)
         */
-        else if (exprs.length === 2) {
-            /*
-                part of :
-                    a = {'arg': 1}
-            */
-            if (right.type !== Syntax.AssignmentExpression) {
-                right = {
-                    type: Syntax.AssignmentExpression,
-                    operator: "=",
-                    left: {
-                        type: "Identifier",
-                        name: "__obj"
-                    },
-                    right: right
-                }
+        if (right.type !== Syntax.AssignmentExpression) {
+            right = {
+                type: Syntax.AssignmentExpression,
+                operator: "=",
+                left: {
+                    type: "Identifier",
+                    name: "__arr"
+                },
+                right: right
             }
-            
-            body.body = exports.parse('{0} = {1}[{2}]'.format(
-                exprs[1].name, 
-                right.left.name, 
-                exprs[0].name
-            )).body.concat(body.body);
         }
         
-        return {
-            type: Syntax.ForInStatement,
-            left: left,
-            right: right,
-            body: body,
-            each: false
+        left = {
+            type: left.type, // may be identifier
+            name: '__k'
         };
+        
+        body.body = exports.parse('{0} = {1}[{2}]'.format(
+            exprs[0].name, 
+            right.left.name, 
+            '__k'
+        )).body.concat(body.body);
     }
+    /*
+        would parse this:
+            
+            for k, v in a = {'k': 1, 'i': 2}:
+                console.log(k, ':', v)
+            
+            for k, v in {'k': 1, 'i': 2}:
+                console.log(k, ':', v)
+            
+            for v in a = {'k': 1, 'i': 2}:
+                console.log(v)
+    */
+    else if (exprs.length === 2) {
+        /*
+            part of :
+                a = {'arg': 1}
+        */
+        if (right.type !== Syntax.AssignmentExpression) {
+            right = {
+                type: Syntax.AssignmentExpression,
+                operator: "=",
+                left: {
+                    type: "Identifier",
+                    name: "__obj"
+                },
+                right: right
+            }
+        }
+        
+        body.body = exports.parse('{0} = {1}[{2}]'.format(
+            exprs[1].name, 
+            right.left.name, 
+            exprs[0].name
+        )).body.concat(body.body);
+    }
+    
+    return {
+        type: Syntax.ForInStatement,
+        left: left,
+        right: right,
+        body: body,
+        each: false
+    };
 }
 
 /*
@@ -3544,18 +3526,10 @@ Parser.prototype.parseContinueStatement = function() {
     this.consume();
     
     if (!(this.token.kind === Token.NEWLINE 
-       || this.token.kind === Token.EOF)) {
-        throw new Error("{location} {message}".format({
-            location: this.token.location.toString(),
-            message: Message.IllegalContinue
-        }));
-    }
+       || this.token.kind === Token.EOF)) this.assert(Message.IllegalContinue);
     
     if (this.state.current.indexOf(State.InIteration) === -1) {
-        throw new Error("{location} {message}".format({
-            location: this.token.location.toString(),
-            message: Message.IllegalContinuePosition
-        }));
+        this.assert(Message.IllegalContinuePosition);
     }
     
     return {
@@ -3574,20 +3548,11 @@ Parser.prototype.parseBreakStatement = function() {
     this.consume();
     
     if (!(this.token.kind === Token.NEWLINE 
-       || this.token.kind === Token.EOF)) {
-        throw new Error("{location} {message}".format({
-            location: this.token.location.toString(),
-            message: Message.IllegalBreak
-        }));
-    }
+       || this.token.kind === Token.EOF)) this.assert(Message.IllegalBreak);
     
     if (this.state.current.indexOf(State.InIteration) === -1) {
-        throw new Error("{location} {message}".format({
-            location: this.token.location.toString(),
-            message: Message.IllegalBreakPosition
-        }));
+        this.assert(Message.IllegalBreakPosition);
     }
-    
     return {
         type: Syntax.BreakStatement
     };
@@ -3605,10 +3570,7 @@ Parser.prototype.parseReturnStatement = function() {
     this.consume();
     
     if (this.state.current.indexOf(State.InFunction) === -1) {
-        throw new Error("{location} {message}".format({
-            location: this.token.location.toString(),
-            message: Message.IllegalReturn
-        }));
+        this.assert(Message.IllegalReturn);
     }
     
     if (!(this.token.kind === Token.NEWLINE 
@@ -3618,10 +3580,7 @@ Parser.prototype.parseReturnStatement = function() {
     
     if (!(this.token.kind === Token.NEWLINE 
        || this.token.kind === Token.EOF)) {
-        throw new Error("{location} {message}".format({
-            location: this.token.location.toString(),
-            message: Message.IllegalReturnArgument
-        }));
+        this.assert(Message.IllegalReturnArgument);
     }
     
     return {
@@ -3790,11 +3749,7 @@ Parser.prototype.parsePrimaryExpression = function() {
 
         // comment
     */
-    throw new Error("{location} {message} {token}".format({
-        location: this.token.location.toString(),
-        message: Message.UnexpectedToken,
-        token: this.token.text
-    }));
+    this.assert(Message.UnexpectedToken + ' ' + this.token.text);
 }
 
 /*
@@ -4118,7 +4073,7 @@ Parser.prototype.parseCallMember = function(object) {
     return {
         type: Syntax.CallExpression,
         callee: object,
-        'arguments': this.parseArguments()
+        arguments: this.parseArguments()
     };
 }
 
@@ -4172,10 +4127,7 @@ Parser.prototype.parseArgumentList = function() {
             this.consume();
             continue;
         }
-        throw new Error("{location} {message}".format({
-            location: this.token.location.toString(),
-            message: Message.IllegalArgumentList
-        }));
+        this.assert(Message.IllegalArgumentList);
     }
     return arguments;
 }
@@ -4318,18 +4270,8 @@ Parser.prototype.parsePostfixExpression = function() {
         this.consume();
         if (expr.type === Syntax.ObjectExpression
          || expr.type === Syntax.ArrayExpression) {
-            if (token.text === '++') {
-                throw new Error("{location} {message}".format({
-                    location: this.token.location.toString(),
-                    message: Message.IllegalPostfixIncrement
-                }));
-            }
-            if (token.text === '--') {
-                throw new Error("{location} {message}".format({
-                    location: this.token.location.toString(),
-                    message: Message.IllegalPostfixDecrement
-                }));
-            }
+            if (token.text === '++') this.assert(Message.IllegalPostfixIncrement);
+            if (token.text === '--') this.assert(Message.IllegalPostfixDecrement);
         }
         return {
             type: Syntax.UpdateExpression,
@@ -4377,18 +4319,8 @@ Parser.prototype.parseUnaryExpression = function() {
         var expr = this.parseUnaryExpression();
         if (expr.type === Syntax.ObjectExpression
          || expr.type === Syntax.ArrayExpression) {
-            if (token.text === '++') {
-                throw new Error("{location} {message}".format({
-                    location: this.token.location.toString(),
-                    message: Message.IllegalPrefixIncrement
-                }));
-            }
-            if (token.text === '--') {
-                throw new Error("{location} {message}".format({
-                    location: this.token.location.toString(),
-                    message: Message.IllegalPrefixDecrement
-                }));
-            }
+            if (token.text === '++') this.assert(Message.IllegalPrefixIncrement);
+            if (token.text === '--') this.assert(Message.IllegalPrefixDecrement);
         }
         return {
             type: Syntax.UpdateExpression,
@@ -4441,10 +4373,7 @@ Parser.prototype.parseMultiplicativeExpression = function() {
         this.consume();
         if (expr.type === Syntax.ObjectExpression
          || expr.type === Syntax.ArrayExpression) {
-             throw new Error("{location} {message}".format({
-                 location: this.token.location.toString(),
-                 message: Message.IllegalMultiplicativeExpression
-             }));
+             this.assert(Message.IllegalMultiplicativeExpression);
         }
         expr = {
             type: Syntax.BinaryExpression,
@@ -4869,10 +4798,7 @@ Parser.prototype.parseConditionalExpression = function() {
         this.expect('else');
         var alternate = this.parseLogicalORExpression();
         if (!alternate) {
-            throw new Error("{location} {message}".format({
-                location: this.token.location.toString(),
-                message: Message.IllegalConditionalExpression
-            }));
+            this.assert(Message.IllegalConditionalExpression);
         }
         return {
             type: Syntax.ConditionalExpression,
@@ -5005,7 +4931,8 @@ Parser.prototype.parseFunctionDeclaration = function() {
     this.expect('def');
     var id = this.parseIdentifier();
     var params = this.parseFormalParameterList();
-    var body = this.parseFunctionBody();
+    var body = this.parseFunctionBody()[0];
+    
     if (body.body.length === 1 
      && body.body[0].type === Syntax.EmptyStatement) {
         body.body = [];
@@ -5078,12 +5005,228 @@ Parser.prototype.parseDefaultArgument = function(left, right) {
         SourceElements
 */
 Parser.prototype.parseFunctionBody = function() {
+    var body;
     this.ecstack.push([]);
     this.state.push([State.InFunction]);
-    var body = this.parseBlock();
+    body = this.parseSourceElements();
     this.state.pop();
     this.ecstack.pop();
+    return body
+}
+
+/*
+    13 Class Definition
+    
+    ClassDeclaration :
+        class Identifier ( FormalParameterListopt )opt : ClassBody 
+*/
+Parser.prototype.parseClassDeclaration = function() {
+    
+    var id, body, inherit;
+    
+    this.expect('class');
+    id = this.parseIdentifier();
+    
+    if (this.match('(')) {
+        this.consume();
+        inherit = this.parseInheritDeclaration(id);
+        this.expect(')');
+    }
+    this.expect(':');
+    
+    if (this.matchKind(Token.NEWLINE)) {
+        this.consume();
+    }
+    
+    this.indent++;
+    body = this.parseClassBody(id, inherit);
+    this.indent--;
+    
+    body.push({
+        type: Syntax.EmptyStatement
+    });
+    
+    
     return body;
+}
+
+Parser.prototype.parseClassBody = function(cls, inherit) {
+    
+    var declarations = [], variables = [], indent = this.token.text;
+    var constructor = this.parseClassConstructorDeclaration(cls, true);
+    
+    while (1) {
+        if (this.matchKind(Token.EOF)) break;
+        if (this.matchKind(Token.NEWLINE)) {
+            this.consume();
+            continue;
+        }
+        
+        if (this.matchKind(Token.INDENT)) {
+            this.consume();
+            continue;
+        }
+        
+        // member variable
+        if (this.lookahead(1).text === '=') {
+            var code = 'this.{0}'.format(
+                exports.codegen(this.parseAssignmentExpression())
+            );
+            variables.push(exports.parse(code).body[0]);
+            continue;
+        }
+        
+        // method
+        if (this.lookahead(1).text === '(') {
+            if (this.match('constructor')) {
+                constructor = this.parseClassConstructorDeclaration(cls);
+                continue;
+            }
+            declarations.push({ type: Syntax.EmptyStatement });
+            declarations.push(this.parseClassFunctionDeclaration(cls));
+            continue;
+        }
+        break; // avoid infinite loop
+    }
+    
+    constructor.declarations[0].init.body.body = variables.concat(constructor.declarations[0].init.body.body);
+    if (constructor.declarations[0].init.body.body.length === 0) {
+        constructor.declarations[0].init.body.body.push({
+            type: Syntax.EmptyStatement
+        });
+    }
+    
+    if (inherit) {
+        declarations.shift();
+        declarations.unshift(inherit);
+        declarations.unshift({
+            type: Syntax.EmptyStatement
+        });
+    }
+    
+    declarations.unshift(constructor);
+    return declarations;
+}
+
+Parser.prototype.parseClassConstructorDeclaration = function(cls, init) {
+    init = init || false;
+    
+    var id, params = [];
+    var body = {
+        type: Syntax.BlockStatement,
+        body: []
+    };
+    
+    if (!init) {
+        id = this.parseIdentifier();
+        params = this.parseFormalParameterList();
+        body = this.parseFunctionBody().shift();
+        body.body = params.init.concat(body.body);
+        params = params.params;
+    }
+    
+    return {
+        type: Syntax.VariableDeclaration,
+        declarations: [{
+            type: Syntax.VariableDeclarator,
+            id: cls,
+            init: {
+                type: Syntax.FunctionExpression,
+                id: null,
+                params: params,
+                defaults: [],
+                body: body,
+                rest: null,
+                generator: false,
+                expression: false
+            }
+        }],
+        kind: 'var'
+    };
+}
+
+Parser.prototype.parseInheritDeclaration = function(cls) {
+    var id = this.parseIdentifier();
+    return {
+        type: Syntax.ExpressionStatement,
+        expression: {
+            type: Syntax.AssignmentExpression,
+            operator: '=',
+            left: {
+                type: Syntax.MemberExpression,
+                computed: false,
+                object: cls,
+                property: {
+                    type: Syntax.Identifier,
+                    name: 'prototype'
+                }
+            },
+            right: {
+                type: Syntax.CallExpression,
+                callee: {
+                    type: Syntax.MemberExpression,
+                    computed: false,
+                    object: {
+                        type: Syntax.Identifier,
+                        name: 'Object'
+                    },
+                    property: {
+                        type: Syntax.Identifier,
+                        name: 'create'
+                    }
+                },
+                arguments: [
+                    {
+                        type: Syntax.MemberExpression,
+                        computed: false,
+                        object: id,
+                        property: {
+                            type: Syntax.Identifier,
+                            name: 'prototype'
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}
+
+Parser.prototype.parseClassFunctionDeclaration = function(cls) {
+    var id = this.parseIdentifier();
+    var params = this.parseFormalParameterList();
+    var body = this.parseFunctionBody().shift();
+    body.body = params.init.concat(body.body);
+    return {
+        type: Syntax.ExpressionStatement,
+        expression: {
+            type: Syntax.AssignmentExpression,
+            operator: '=',
+            left: {
+                type: Syntax.MemberExpression,
+                computed: false,
+                object: {
+                    type: Syntax.MemberExpression,
+                    computed: false,
+                    object: cls,
+                    property: {
+                        type: Syntax.Identifier,
+                        name: 'prototype'
+                    }
+                },
+                property: id
+            },
+            right: {
+                type: Syntax.FunctionExpression,
+                id: null,
+                params: params.params,
+                defaults: [],
+                body: body,
+                rest: null,
+                generator: false,
+                expression: false
+            }
+        }
+    }
 }
 
 /*
@@ -5180,5 +5323,51 @@ Token.KEYWORDS.WHILE = 'while';
 Token.KEYWORDS.XOR = 'xor';
 Token.KEYWORDS.NONE = 'none';
 Token.KEYWORDS.VAR = 'var';
+// src/trace.js
+function trace(s){
+  mylog = [];
+  function getIndent(num){
+    var ind = [];
+    while(num){
+      ind.push('  ');
+      num--;
+    }
+    return ind.join('');
+  }
+  function addLog(txt, defaultIndent){
+    var cnt = defaultIndent;
+    //array
+    if((typeof txt == 'object') && (txt instanceof Array)){
+      cnt++;
+      mylog.push('[');
+      for(var i = 0; i < txt.length; i++){
+        mylog.push('\r\n' + getIndent(cnt));
+        addLog(txt[i], cnt);
+        if(i != txt.length - 1){
+          mylog.push(',');
+        }
+      }
+      mylog.push('\r\n' + getIndent(cnt - 1) + ']');
+    //object
+    }else if((typeof txt == 'object')){
+      cnt++;
+      mylog.push('{');
+      for(var i in txt){
+        mylog.push('\r\n' + getIndent(cnt) + i + ':');
+        addLog(txt[i], cnt);
+        mylog.push(',');
+      }
+      mylog.pop();
+      mylog.push('\r\n' + getIndent(cnt - 1) + '}');
+    }else{
+      mylog.push(txt);
+    }
+  }
+  addLog(s, 0);
+  console.log(mylog.join(''));
+
+  //Firebugが入っていなかったらこっち
+  //alert(mylog.join(''));
+};
 return exports;
 })();

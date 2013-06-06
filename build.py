@@ -38,7 +38,7 @@ def compress(text):
     text = re.sub(r"('([^'\\]|\\(.|\n))*'|\"([^\"\\]|\\(.|\n))*\")", compress, text) # replace all strings
     return text
 
-def release():
+def release(data):
     f1, temp1_path = tempfile.mkstemp()
     f2, temp2_path = tempfile.mkstemp()
     os.write(f1, data)

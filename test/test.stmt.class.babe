@@ -1,0 +1,109 @@
+/+
+var Person = function (name) {
+    var name = 'bob'
+    name = 'bob'
+}
+
+var Person = function (name) {
+    var name = 'bob'
+    name = 'bob'
+}
+
+var Bob = function () {
+    
+}
+
+Bob.prototype.say = function (name) {
+    var name = 'bob'
+}
+
+var Person = function (name) {
+    name = name || 'bob'
+    print('my name is ' + name)
+}
+
+var Person = function (name) {
+    this.name = name
+}
+
+Person.prototype.say = function () {
+    print('my name is ' + this.name)
+}
+
+var Bob = function () {
+    this.name = 'bob'
+}
+
+Bob.prototype = Object.create(Person.prototype)
+Bob.prototype.say = function () {
+    console.log('bob')
+}
+
+var Person = function (name) {
+    
+}
+
+Person.prototype.say = function () {
+    print('my name is ' + this.name)
+}
+
+var Bob = function () {
+    this.name = 'bob'
+}
+
+Bob.prototype = Object.create(Person.prototype)
+Bob.prototype.say = function () {
+    parent.say()
+}
+
++/
+class Person:
+    constructor(name):
+        name = 'bob'
+        name = 'bob'
+
+class Person:
+    constructor(name):
+        name = 'bob'
+        name = 'bob'
+
+class Bob:
+    say(name):
+        name = 'bob'
+
+class Person:
+    constructor(name = 'bob'):
+        print('my name is ' + name)
+
+class Person:
+    
+    constructor(name):
+        this.name = name
+    
+    say():
+        print('my name is ' + this.name)
+
+class Bob(Person):
+    
+    constructor():
+        this.name = 'bob'
+    
+    say():
+        console.log("bob")
+
+class Person:
+    
+    constructor(name):
+        pass
+    
+    say():
+        print('my name is ' + this.name)
+
+
+class Bob(Person):
+    
+    constructor():
+        this.name = 'bob'
+    
+    say():
+        parent.say()

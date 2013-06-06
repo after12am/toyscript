@@ -128,7 +128,10 @@ Parser.prototype.parseSourceElements = function() {
                 a = 1<EOF>
         */
         if (this.matchKind(Token.EOF)) break;
-        if (node = this.parseSourceElement()) {
+        if (this.match('class')) {
+            node = this.parseClassDeclaration();
+            nodes = nodes.concat(node);
+        } else if (node = this.parseSourceElement()) {
             if (node.type === Syntax.PassStatement) {
                 node.type = Syntax.EmptyStatement;
             }
@@ -150,6 +153,7 @@ Parser.prototype.parseSourceElements = function() {
     
     SourceElement:
         Statement
+        ClassDeclaration
         FunctionDeclaration
 */
 Parser.prototype.parseSourceElement = function() {
@@ -366,9 +370,9 @@ Parser.prototype.parseStatementList = function() {
         
         if (this.matchKind(Token.INDENT)) {
             if (this.token.text < indent) break;
-            // if (this.token.text > indent) this.assert(Message.IllegalIndentSize);
-            // this.consume();
-            // continue;
+            if (this.token.text > indent) this.assert(Message.IllegalIndentSize);
+            this.consume();
+            continue;
         }
     }
     
@@ -2180,6 +2184,220 @@ Parser.prototype.parseFunctionBody = function() {
     this.state.pop();
     this.ecstack.pop();
     return body
+}
+
+/*
+    13 Class Definition
+    
+    ClassDeclaration :
+        class Identifier ( FormalParameterListopt )opt : ClassBody 
+*/
+Parser.prototype.parseClassDeclaration = function() {
+    
+    var id, body, inherit;
+    
+    this.expect('class');
+    id = this.parseIdentifier();
+    
+    if (this.match('(')) {
+        this.consume();
+        inherit = this.parseInheritDeclaration(id);
+        this.expect(')');
+    }
+    this.expect(':');
+    
+    if (this.matchKind(Token.NEWLINE)) {
+        this.consume();
+    }
+    
+    this.indent++;
+    body = this.parseClassBody(id, inherit);
+    this.indent--;
+    
+    body.push({
+        type: Syntax.EmptyStatement
+    });
+    
+    return body;
+}
+
+Parser.prototype.parseClassBody = function(cls, inherit) {
+    
+    var declarations = [], variables = [], indent = this.token.text;
+    var constructor = this.parseClassConstructorDeclaration(cls, true);
+    
+    while (1) {
+        if (this.matchKind(Token.EOF)) break;
+        if (this.matchKind(Token.NEWLINE)) {
+            this.consume();
+            continue;
+        }
+        
+        if (this.matchKind(Token.INDENT)) {
+            this.consume();
+            continue;
+        }
+        
+        // member variable
+        if (this.lookahead(1).text === '=') {
+            var code = 'this.{0}'.format(
+                exports.codegen(this.parseAssignmentExpression())
+            );
+            variables.push(exports.parse(code).body[0]);
+            continue;
+        }
+        
+        // method
+        if (this.lookahead(1).text === '(') {
+            if (this.match('constructor')) {
+                constructor = this.parseClassConstructorDeclaration(cls);
+                continue;
+            }
+            declarations.push({ type: Syntax.EmptyStatement });
+            declarations.push(this.parseClassFunctionDeclaration(cls));
+            continue;
+        }
+        break; // avoid infinite loop
+    }
+    
+    constructor.declarations[0].init.body.body = variables.concat(constructor.declarations[0].init.body.body);
+    if (constructor.declarations[0].init.body.body.length === 0) {
+        constructor.declarations[0].init.body.body.push({
+            type: Syntax.EmptyStatement
+        });
+    }
+    
+    if (inherit) {
+        declarations.shift();
+        declarations.unshift(inherit);
+        declarations.unshift({
+            type: Syntax.EmptyStatement
+        });
+    }
+    
+    declarations.unshift(constructor);
+    return declarations;
+}
+
+Parser.prototype.parseClassConstructorDeclaration = function(cls, init) {
+    init = init || false;
+    
+    var id, params = [];
+    var body = {
+        type: Syntax.BlockStatement,
+        body: []
+    };
+    
+    if (!init) {
+        id = this.parseIdentifier();
+        params = this.parseFormalParameterList();
+        body = this.parseFunctionBody().shift();
+        body.body = params.init.concat(body.body);
+        params = params.params;
+    }
+    
+    return {
+        type: Syntax.VariableDeclaration,
+        declarations: [{
+            type: Syntax.VariableDeclarator,
+            id: cls,
+            init: {
+                type: Syntax.FunctionExpression,
+                id: null,
+                params: params,
+                defaults: [],
+                body: body,
+                rest: null,
+                generator: false,
+                expression: false
+            }
+        }],
+        kind: 'var'
+    };
+}
+
+Parser.prototype.parseInheritDeclaration = function(cls) {
+    var id = this.parseIdentifier();
+    return {
+        type: Syntax.ExpressionStatement,
+        expression: {
+            type: Syntax.AssignmentExpression,
+            operator: '=',
+            left: {
+                type: Syntax.MemberExpression,
+                computed: false,
+                object: cls,
+                property: {
+                    type: Syntax.Identifier,
+                    name: 'prototype'
+                }
+            },
+            right: {
+                type: Syntax.CallExpression,
+                callee: {
+                    type: Syntax.MemberExpression,
+                    computed: false,
+                    object: {
+                        type: Syntax.Identifier,
+                        name: 'Object'
+                    },
+                    property: {
+                        type: Syntax.Identifier,
+                        name: 'create'
+                    }
+                },
+                arguments: [
+                    {
+                        type: Syntax.MemberExpression,
+                        computed: false,
+                        object: id,
+                        property: {
+                            type: Syntax.Identifier,
+                            name: 'prototype'
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}
+
+Parser.prototype.parseClassFunctionDeclaration = function(cls) {
+    var id = this.parseIdentifier();
+    var params = this.parseFormalParameterList();
+    var body = this.parseFunctionBody().shift();
+    body.body = params.init.concat(body.body);
+    return {
+        type: Syntax.ExpressionStatement,
+        expression: {
+            type: Syntax.AssignmentExpression,
+            operator: '=',
+            left: {
+                type: Syntax.MemberExpression,
+                computed: false,
+                object: {
+                    type: Syntax.MemberExpression,
+                    computed: false,
+                    object: cls,
+                    property: {
+                        type: Syntax.Identifier,
+                        name: 'prototype'
+                    }
+                },
+                property: id
+            },
+            right: {
+                type: Syntax.FunctionExpression,
+                id: null,
+                params: params.params,
+                defaults: [],
+                body: body,
+                rest: null,
+                generator: false,
+                expression: false
+            }
+        }
+    }
 }
 
 /*
