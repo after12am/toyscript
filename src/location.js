@@ -5,9 +5,8 @@ var Location = function(line, column) {
 }
 
 Location.prototype.toString = function() {
-    var data = {
-        'line': this.line, 
-        'column': this.column
-    }
-    return "Line {line} Column {column}".format(data);
+    return "Line {line} Column {column}".format([
+        this.line, 
+        this.column
+    ]);
 };

@@ -6,12 +6,11 @@ var Token = function(kind, text, location) {
 }
 
 Token.prototype.toString = function() {
-    var data = {
-        "location": this.location.toString(), 
-        "kind": this.kind, 
-        "message": this.text
-    };
-    return "{location} kind:{kind} text:{message}".format(data);
+    return "{0} kind:{1} text:{2}".format([
+        this.location.toString(), 
+        this.kind, 
+        this.text
+    ]);
 }
 
 /*

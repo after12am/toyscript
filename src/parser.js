@@ -991,7 +991,7 @@ Parser.prototype.parseLiteral = function() {
             '1 + 1 = 2'
         */
         if (token.delimiter === '"') {
-            var that = this, rep = {};
+            var m, that = this, rep = {};
             var m = token.text.match(/{(.*?)}/g);
             if (m) {
                 m.forEach(function(ident) {
@@ -1098,37 +1098,26 @@ Parser.prototype.parseObjectInitialiser = function() {
         PropertyNameAndValueList , PropertyName : AssignmentExpression
 */
 Parser.prototype.parsePropertyNameAndValueList = function() {
-    
-    var props = [];
+    var properties = [], property;
     
     while (!this.match('}')) {
         if (this.match(',')) this.consume();
-        var key = this.parsePropertyName();
+        property = this.parsePropertyName();
         this.expect(':');
         
-        if (key.type === Syntax.Identifier) {
-            props.push({
-                type: Syntax.Property,
-                key: key,
-                value: this.parseAssignmentExpression(),
-                kind: 'init'
-            });
+        if (property.type === Syntax.Literal) {
+            property.value = property.name;
+            delete property.name;
         }
         
-        if (key.type === Syntax.Literal) {
-            props.push({
-                type: Syntax.Property,
-                key: {
-                    type: key.type,
-                    value: key.name
-                },
-                value: this.parseAssignmentExpression(),
-                raw: 'init'
-            });
-        }
+        properties.push({
+            type: Syntax.Property,
+            key: property,
+            value: this.parseAssignmentExpression(),
+            raw: 'init'
+        });
     }
-    
-    return props;
+    return properties;
 }
 
 /*
@@ -1192,8 +1181,11 @@ Parser.prototype.parseGroupingOperator = function() {
         new MemberExpression Arguments
 */
 Parser.prototype.parseMemberExpression = function(allow_call) {
+    
     if (this.match('new')) return this.parseNewExpression();
+    
     var expr = this.parseFunctionExpression() || this.parsePrimaryExpression();
+    
     while (1) {
         if (this.token.kind === Token.EOF
          || this.token.kind === Token.NEWLINE) break;
@@ -1277,8 +1269,9 @@ Parser.prototype.parseNewExpression = function() {
     
 */
 Parser.prototype.parseArguments = function() {
+    var arguments;
     this.expect('(');
-    var arguments = this.parseArgumentList();
+    arguments = this.parseArgumentList();
     this.expect(')');
     return arguments;
 }
@@ -1341,8 +1334,10 @@ Parser.prototype.parseFunctionExpression = function() {
         }
         
         if (this.lookahead(++k).text === ':') {
-            this.expect('(');
+            
             var arguments = [];
+            
+            this.expect('(');
             while (!this.match(')')) {
                 if (this.match(',')) this.consume();
                 arguments.push(this.parsePrimaryExpression());
@@ -1353,22 +1348,8 @@ Parser.prototype.parseFunctionExpression = function() {
             this.state.push([State.InFunction]);
             var body = this.parseStatement();
             this.state.pop();
-            var idents = [], ecstack = this.ecstack;
-            
-            // walk the subtree and find identifier node
-            (function walk(subtree) {
-                for (var i in subtree) {
-                    if (typeof subtree[i] !== 'object') continue;
-                    if (subtree[i].type === Syntax.Identifier
-                     && idents.indexOf(subtree[i].name) === -1
-                     && ecstack.current[subtree[i].name] === undefined) {
-                        idents.push(subtree[i].name);
-                    }
-                    walk(subtree[i]);
-                }
-            })(body.body);
+            var idents = this.ecstack.findIdent(body.body);
             this.ecstack.pop();
-            
             var params = idents.map(function(ident) {
                 return {
                     type: Syntax.Identifier,
@@ -1620,14 +1601,11 @@ Parser.prototype.parseShiftExpression = function() {
 */
 Parser.prototype.parseRelationalExpression = function() {
     
+    var operators = ['<', '>', '<=', '>=', 'instanceof', 'in', 'typeof'];
     var expr = this.parseShiftExpression();
     
     // 11.8.1, 11.8.2, 11.8.3, 11.8.4, 11.8.6, 11.8.7
-    while (this.match('<') || this.match('>') 
-        || this.match('<=') || this.match('>=') 
-        || this.match('instanceof')
-        || this.match('in')
-        || this.match('typeof')) {
+    while (operators.indexOf(this.token.text) > -1) {
         
         var right;
         var in_operator = this.match('in');
@@ -1806,20 +1784,15 @@ Parser.prototype.parseEqualityExpression = function() {
     
     // 11.9.1 - 11.9.2
     while (this.match('==') || this.match('!=') || this.match('is')) {
-        var token = this.token, operator;
+        var operator = this.token.text;
         this.consume();
-        switch (token.text) {
-        case 'is':
+        if (operator === 'is') {
             operator = '==';
             // is not expression
             if (this.match('not')) {
                 this.consume();
                 operator = '!=';
             }
-            break;
-        default:
-            operator = token.text;
-            break;
         }
         expr = {
             type: Syntax.BinaryExpression,
@@ -2104,11 +2077,6 @@ Parser.prototype.parseFunctionDeclaration = function() {
     var id = this.parseIdentifier();
     var params = this.parseFormalParameterList();
     var body = this.parseFunctionBody()[0];
-    
-    if (body.body.length === 1 
-     && body.body[0].type === Syntax.EmptyStatement) {
-        body.body = [];
-    }
     body.body = params.init.concat(body.body);
     return {
         type: Syntax.FunctionDeclaration,
@@ -2257,6 +2225,7 @@ Parser.prototype.parseClassBody = function(cls, inherit) {
             declarations.push(this.parseClassFunctionDeclaration(cls));
             continue;
         }
+        
         break; // avoid infinite loop
     }
     
@@ -2280,14 +2249,11 @@ Parser.prototype.parseClassBody = function(cls, inherit) {
 }
 
 Parser.prototype.parseClassConstructorDeclaration = function(cls, init) {
-    init = init || false;
-    
     var id, params = [];
     var body = {
         type: Syntax.BlockStatement,
         body: []
     };
-    
     if (!init) {
         id = this.parseIdentifier();
         params = this.parseFormalParameterList();
@@ -2295,7 +2261,6 @@ Parser.prototype.parseClassConstructorDeclaration = function(cls, init) {
         body.body = params.init.concat(body.body);
         params = params.params;
     }
-    
     return {
         type: Syntax.VariableDeclaration,
         declarations: [{
