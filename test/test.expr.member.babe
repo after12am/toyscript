@@ -1,7 +1,7 @@
 /+
 var func = function (x) {
-        return x * x
-    }(2)
+    return x * x
+}
 
 var a = [
         func,
@@ -19,7 +19,7 @@ new a[0]()
 
 new b['a']()
 +/
-func = (2): x * x
+func = (x): x * x
 
 a = [func, 2]
 a[0]

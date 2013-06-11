@@ -1311,86 +1311,50 @@ Parser.prototype.parseFunctionExpression = function() {
     /*
         lambda expression
             
-            (2): x * x
+            (x = 1): x * x
              |
              v
             (function (x) {
-            	return x * x;
-            })(2);
-            
-            (2, 2): x * y
-             |
-             v
-            (function (x, y) {
-            	return x * y;
-            })(2, 2);
+                x = x || 1
+            	return x * x
+            })
     */
     if (this.match('(')) {
+        
         var k = 1;
-        while (this.lookahead(k).text !== ')') {
+        while (this.lookahead(k).text !== ':') {
             if (this.lookahead(k).kind === Token.NEWLINE
-             || this.lookahead(k).kind === Token.EOF) break;
+             || this.lookahead(k).kind === Token.EOF) return;
             k++;
         }
         
-        if (this.lookahead(++k).text === ':') {
-            
-            var arguments = [];
-            
-            this.expect('(');
-            while (!this.match(')')) {
-                if (this.match(',')) this.consume();
-                arguments.push(this.parsePrimaryExpression());
-            }
-            this.expect(')');
-            
-            this.ecstack.push([]);
-            this.state.push([State.InFunction]);
-            var body = this.parseStatement();
-            this.state.pop();
-            var idents = this.ecstack.findIdent(body.body);
-            this.ecstack.pop();
-            var params = idents.map(function(ident) {
-                return {
-                    type: Syntax.Identifier,
-                    name: ident
-                }
-            });
-            
-            /*
-                would parse lambda that has multiple statement
-                
-                (2):
-                    a = x * x
-                    b = a + 1
-                    b + 2
-                 |
-                 v
-                (function () {
-                    var a = x * x
-                    var b = a + 1
-                    return b + 2
-                }(2))
-            */
-            body.body.push({
-                type: Syntax.ReturnStatement,
-                argument: body.body.pop().expression
-            });
-            
-            return {
-                type: Syntax.CallExpression,
-                callee: {
-                    type: Syntax.FunctionExpression,
-                    id: null,
-                    params: params,
-                    defaults: [],
-                    body: body,
-                    rest: null,
-                    generator: false,
-                    expression: false
-                },
-                arguments: arguments
-            }
+        var body, arguments;
+        arguments = this.parseFormalParameterList();
+        this.expect(':');
+        
+        this.ecstack.push([]);
+        this.state.push([State.InFunction]);
+        body = this.parseExpressionStatement();
+        body = arguments.init.concat(body);
+        body.push({
+            type: Syntax.ReturnStatement,
+            argument: body.pop().expression
+        });
+        this.state.pop();
+        this.ecstack.pop();
+        
+        return {
+            type: Syntax.FunctionExpression,
+            id: null,
+            params: arguments.params,
+            defaults: [],
+            body: {
+                type: Syntax.BlockStatement,
+                body: body
+            },
+            rest: null,
+            generator: false,
+            expression: false
         }
     }
 }
@@ -2102,7 +2066,10 @@ Parser.prototype.parseFormalParameterList = function() {
     this.expect('(');
     while (!this.match(')')) {
         if (this.match(',')) this.consume();
-        params.push(this.parseIdentifier());
+        params.push(this.parsePrimaryExpression());
+        if (params[params.length - 1].type !== Syntax.Identifier) {
+            this.assert(Message.IllegalArgument);
+        }
         if (this.match('=')) {
             this.consume();
             init.push(this.parseDefaultArgument(
