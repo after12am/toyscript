@@ -17,5 +17,18 @@ State.prototype.pop = function() {
     }
 }
 
-State.InFunction = 0;
-State.InIteration = 1;
+State.prototype.inClass = function() {
+    return this.current.indexOf(State.InIteration) > -1;
+}
+
+State.prototype.inFunction = function() {
+    return this.current.indexOf(State.InFunction) > -1;
+}
+
+State.prototype.inIteration = function() {
+    return this.current.indexOf(State.InIteration) > -1;
+}
+
+State.InClass = 0;
+State.InFunction = 1;
+State.InIteration = 2;

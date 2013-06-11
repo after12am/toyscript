@@ -10,9 +10,7 @@ var Person = function (name) {
 }
 
 var Bob = function () {
-    
 }
-
 Bob.prototype.say = function (name) {
     var name = 'bob'
 }
@@ -25,7 +23,6 @@ var Person = function (name) {
 var Person = function (name) {
     this.name = name
 }
-
 Person.prototype.say = function () {
     print('my name is ' + this.name)
 }
@@ -33,7 +30,6 @@ Person.prototype.say = function () {
 var Bob = function () {
     this.name = 'bob'
 }
-
 Bob.prototype = Object.create(Person.prototype)
 Bob.prototype.say = function () {
     console.log('bob')
@@ -42,20 +38,21 @@ Bob.prototype.say = function () {
 var Person = function (name) {
     
 }
-
 Person.prototype.say = function () {
     print('my name is ' + this.name)
 }
 
+
 var Bob = function () {
     this.name = 'bob'
 }
-
 Bob.prototype = Object.create(Person.prototype)
 Bob.prototype.say = function () {
     parent.say()
 }
 
+var bob = new Bob()
+bob.say()
 +/
 class Person:
     constructor(name):
@@ -107,3 +104,6 @@ class Bob(Person):
     
     say():
         parent.say()
+
+bob = new Bob()
+bob.say()
