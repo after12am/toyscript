@@ -22,7 +22,7 @@ var Message = {
     IllegalFinally:'Illegal finally statement',
     IllegalConditionalExpression:'Illegal conditional expression',
     IllegalIndentSize:'Indent size may be incorrect',
-    IllegalArgument:'Illegal argument',
+    IllegalArgument:'argument has to be identifier',
     IllegalArgumentList:'Arguments maybe includes newline',
     IllegalFunctionExpression:'Illegal function expression',
     IllegalPostfixIncrement:'Postfix increment operator is only for variable',
