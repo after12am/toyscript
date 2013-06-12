@@ -1090,13 +1090,20 @@ Parser.prototype.parseObjectInitialiser = function() {
 Parser.prototype.parsePropertyNameAndValueList = function() {
     var list = [];
     while (!this.match('}')) {
-        if (this.match(',')) this.consume();
-        var key = this.parsePropertyName();
+        if (this.match(',')
+         || this.matchKind(Token.INDENT)
+         || this.matchKind(Token.NEWLINE)
+         || this.matchKind(Token.EOF)) {
+             this.consume();
+             continue;
+         }
+        var k = this.parsePropertyName();
         this.expect(':');
+        var v = this.parseAssignmentExpression();
         list.push({
             type: Syntax.Property,
-            key: key,
-            value: this.parseAssignmentExpression(),
+            key: k,
+            value: v,
             raw: 'init'
         });
     }
@@ -1113,8 +1120,9 @@ Parser.prototype.parsePropertyNameAndValueList = function() {
 */
 Parser.prototype.parsePropertyName = function() {
     
+    var token = this.token;
+    
     if (this.token.kind === Token.IDENTIFIER) {
-        var token = this.token;
         this.consume();
         return {
             type: Syntax.Identifier,
@@ -1123,7 +1131,6 @@ Parser.prototype.parsePropertyName = function() {
     }
     
     if (this.token.kind === Token.STRING) {
-        var token = this.token;
         this.consume();
         return {
             type: Syntax.Literal,
@@ -1132,7 +1139,6 @@ Parser.prototype.parsePropertyName = function() {
     }
     
     if (this.token.kind === Token.DIGIT) {
-        var token = this.token;
         this.consume();
         return {
             type: Syntax.Literal,
@@ -1170,33 +1176,19 @@ Parser.prototype.parseMemberExpression = function(allow_call) {
     var expr = this.parseFunctionExpression() || this.parsePrimaryExpression();
     
     while (1) {
-        if (this.token.kind === Token.EOF
-         || this.token.kind === Token.NEWLINE) break;
-        
-        if (this.match('[')) {
-            expr = this.parseComputedMember(expr);
-            continue;
-        }
-        
-        if (this.match('.')) {
-            expr = this.parseNonComputedMember(expr);
-            continue;
-        }
-        
-        if (allow_call && this.match('(')) {
-            expr = this.parseCallMember(expr);
-            continue;
-        }
-        
-        break;
+        if (this.match('[')) expr = this.parseComputedMember(expr);
+        else if (this.match('.')) expr = this.parseNonComputedMember(expr);
+        else if (this.match('(') && allow_call) expr = this.parseCallMember(expr);
+        else break;
     }
     
     return expr;
 }
 
 Parser.prototype.parseComputedMember = function(object) {
+    var expr;
     this.expect('[');
-    var expr = this.parseExpression();
+    expr = this.parseExpression();
     this.expect(']');
     return {
         type: Syntax.MemberExpression,
@@ -1208,12 +1200,11 @@ Parser.prototype.parseComputedMember = function(object) {
 
 Parser.prototype.parseNonComputedMember = function(object) {
     this.expect('.');
-    var expr = this.parseIdentifier();
     return {
         type: Syntax.MemberExpression,
         computed: false,
         object: object,
-        property: expr
+        property: this.parseIdentifier()
     };
 }
 
@@ -1439,6 +1430,15 @@ Parser.prototype.parseUnaryExpression = function() {
         };
     }
     
+    if (this.match('typeof')) {
+        this.consume();
+        return {
+            type: Syntax.UnaryExpression,
+            operator: 'typeof',
+            argument: this.parseUnaryExpression()
+        };
+    }
+    
     return this.parsePostfixExpression();
 }
 
@@ -1539,166 +1539,91 @@ Parser.prototype.parseShiftExpression = function() {
 */
 Parser.prototype.parseRelationalExpression = function() {
     
-    var operators = ['<', '>', '<=', '>=', 'instanceof', 'in', 'typeof'];
+    var operators = ['<', '>', '<=', '>=', 'instanceof', 'in'];
     var expr = this.parseShiftExpression();
     
     // 11.8.1, 11.8.2, 11.8.3, 11.8.4, 11.8.6, 11.8.7
     while (operators.indexOf(this.token.text) > -1) {
         
-        var right;
-        var in_operator = this.match('in');
         var token = this.token;
         this.consume();
+        var right = this.parseAssignmentExpression();
         
-        /*
-            if "a" in a = {"a": 1}:
-                console.log('found')
-        */
-        if (in_operator && this.lookahead(1).text === '=') {
-            right = this.parseAssignmentExpression();
-        } else {
-            right = this.parseRelationalExpression();
-        }
-        
-        /*
-            if not "a" in {"a": 1}:
-                console.log('not found')
-        */
-        if (in_operator 
-         && expr.type === Syntax.UnaryExpression 
-         && right.type === Syntax.ObjectExpression) {
-            expr = {
-                type: Syntax.UnaryExpression,
-                operator: "!",
-                argument: {
+        if (token.text === 'in') {
+            
+            /*
+                not "a" in {"a": 1}:
+            */
+            if (expr.operator === '!' && right.type === Syntax.ObjectExpression) {
+                expr.argument = {
                     type: Syntax.BinaryExpression,
                     operator: token.text,
                     left: expr.argument,
                     right: right
-                }
-            }
-        }
-        /*
-            if 1 in [1, 2, 3]:
-                console.log('found')
-            
-            if not 0 in [1, 2, 3]:
-                console.log('not found')
-        */
-        else if (in_operator && right.type === Syntax.ArrayExpression) {
-            var operator = '!==';
-            if (expr.type === Syntax.UnaryExpression) {
-                operator = '===';
-                expr = expr.argument;
+                };
+                continue;
             }
             
-            expr = {
-                type: Syntax.BinaryExpression,
-                operator: operator,
-                left: {
-                    type: Syntax.CallExpression,
-                    callee: {
-                        type: Syntax.MemberExpression,
-                        computed: false,
-                        object: right,
-                        property: {
-                            type: Syntax.Identifier,
-                            name: "indexOf"
-                        }
-                    },
-                    arguments: [expr]
-                },
-                right: {
-                    type: Syntax.UnaryExpression,
-                    operator: "-",
-                    argument: {
-                        type: Syntax.Literal,
-                        value: 1,
-                        raw: "1"
-                    }
-                }
-            };
-        }
-        /*
-            b = [2]
-            if 0 in b:
-                console.log(1)
-        */
-        else if (in_operator 
-              && right.type === Syntax.Identifier 
-              && this.ecstack.current[right.name].type === Syntax.ArrayExpression) {
-            
-            var operator = '!==';
-            if (expr.type === Syntax.UnaryExpression
-             && expr.operator === '!') {
-                operator = '===';
-                expr = expr.argument;
-            }
-            
-            expr = {
-                type: Syntax.BinaryExpression,
-                operator: operator,
-                left: {
-                    type: Syntax.CallExpression,
-                    callee: {
-                        type: Syntax.MemberExpression,
-                        computed: false,
-                        object: right,
-                        property: {
-                            type: Syntax.Identifier,
-                            name: "indexOf"
-                        }
-                    },
-                    arguments: [expr]
-                },
-                right: {
-                    type: Syntax.UnaryExpression,
-                    operator: "-",
-                    argument: {
-                        type: Syntax.Literal,
-                        value: 1,
-                        raw: "1"
-                    }
-                }
-            };
-        }
-        /*
-            if "text" typeof "string":
-                console.log("this is string")
-        */
-        else if (token.text === 'typeof') {
             /*
-                ShiftExpression :: one of 
-
-                    Undefined	"undefined"
-                    Null	"object"
-                    Boolean	"boolean"
-                    Number	"number"
-                    String	"string"
-                    Object (native and doesn't implement [[Call]])	"object"
-                    Object (native and implements [[Call]])	"function"
-                    Object (host)	Implementation-dependent
+                if 1 in [1, 2, 3]:
+                if not 0 in [1, 2, 3]:
             */
-
-            expr = {
-                type: Syntax.BinaryExpression,
-                operator: '===',
-                left: {
-                    type: Syntax.UnaryExpression,
-                    operator: 'typeof',
-                    argument: expr
-                },
-                right: right
-            };
+            if (right.type === Syntax.ArrayExpression
+             || right.type === Syntax.Identifier) {
+                
+                if (right.type === Syntax.Identifier) {
+                    // When identifier is not defined, raise ReferenceError
+                    var reference = this.ecstack.find(right.name)
+                    if (reference.type !== Syntax.ArrayExpression) {
+                        this.assert(Message.IllegalRelationalExpression);
+                    }
+                    if (!reference) {
+                        this.assert(Message.ReferenceError.format(right.name));
+                    }
+                }
+                 
+                var argument = expr, operator = '!==';
+                if (argument.operator === '!') {
+                    argument = expr.argument;
+                    operator = '===';
+                }
+                
+                expr = {
+                    type: Syntax.BinaryExpression,
+                    operator: operator,
+                    left: {
+                        type: Syntax.CallExpression,
+                        callee: {
+                            type: Syntax.MemberExpression,
+                            computed: false,
+                            object: right,
+                            property: {
+                                type: Syntax.Identifier,
+                                name: "indexOf"
+                            }
+                        },
+                        arguments: [argument]
+                    },
+                    right: {
+                        type: Syntax.UnaryExpression,
+                        operator: "-",
+                        argument: {
+                            type: Syntax.Literal,
+                            value: 1,
+                            raw: "1"
+                        }
+                    }
+                };
+                continue;
+            }
         }
-        else {
-            expr = {
-                type: Syntax.BinaryExpression,
-                operator: token.text,
-                left: expr,
-                right: right
-            };
-        }
+        
+        expr = {
+            type: Syntax.BinaryExpression,
+            operator: token.text,
+            left: expr,
+            right: right
+        };
     }
     
     return expr;
@@ -1762,9 +1687,11 @@ Parser.prototype.parseEqualityExpression = function() {
         BitwiseANDExpression & EqualityExpression
 */
 Parser.prototype.parseBitwiseANDExpression = function() {
+    
     var expr = this.parseEqualityExpression();
+    var token = this.token;
+    
     while (this.match('&')) {
-        var token = this.token;
         this.consume();
         expr = {
             type: Syntax.BinaryExpression,
@@ -1773,6 +1700,7 @@ Parser.prototype.parseBitwiseANDExpression = function() {
             right: this.parseEqualityExpression()
         };
     }
+    
     return expr;
 }
 
@@ -1784,9 +1712,11 @@ Parser.prototype.parseBitwiseANDExpression = function() {
         BitwiseXORExpression ^ BitwiseANDExpression
 */
 Parser.prototype.parseBitwiseXORExpression = function() {
+    
     var expr = this.parseBitwiseANDExpression();
+    var token = this.token;
+    
     while (this.match('^')) {
-        var token = this.token;
         this.consume();
         expr = {
             type: Syntax.BinaryExpression,
@@ -1795,6 +1725,7 @@ Parser.prototype.parseBitwiseXORExpression = function() {
             right: this.parseBitwiseANDExpression()
         };
     }
+    
     return expr;
 }
 
@@ -1806,9 +1737,11 @@ Parser.prototype.parseBitwiseXORExpression = function() {
         BitwiseORExpression | BitwiseXORExpression
 */
 Parser.prototype.parseBitwiseORExpression = function() {
+    
     var expr = this.parseBitwiseXORExpression();
+    var token = this.token;
+    
     while (this.match('|')) {
-        var token = this.token;
         this.consume();
         expr = {
             type: Syntax.BinaryExpression,
@@ -1817,6 +1750,7 @@ Parser.prototype.parseBitwiseORExpression = function() {
             right: this.parseBitwiseXORExpression()
         };
     }
+    
     return expr;
 }
 
@@ -1885,6 +1819,7 @@ Parser.prototype.parseConditionalExpression = function() {
             alternate: this.parseLogicalORExpression()
         };
     }
+    
     return consequent;
 }
 
@@ -1896,17 +1831,20 @@ Parser.prototype.parseConditionalExpression = function() {
         LeftHandSideExpression AssignmentOperator AssignmentExpression
 */
 Parser.prototype.parseAssignmentExpression = function() {
+    
     var expr = this.parseConditionalExpression();
-    var assign = this.token.text;
-    if (this.matchAssign(assign)) {
+    var token = this.token;
+    
+    if (this.matchAssign(token.text)) {
         this.consume();
         expr = {
             type: Syntax.AssignmentExpression,
-            operator: assign,
+            operator: token.text,
             left: expr,
             right: this.parseAssignmentExpression()
         };
     }
+    
     return expr;
 }
 
@@ -1952,7 +1890,9 @@ Parser.prototype.matchAssign = function(op) {
         Expression , AssignmentExpression
 */
 Parser.prototype.parseExpression = function() {
+    
     var expr = this.parseAssignmentExpression();
+    
     if (this.match(',')) {
         expr = {
             type: Syntax.SequenceExpression,
@@ -1964,6 +1904,7 @@ Parser.prototype.parseExpression = function() {
             expr.expressions.push(this.parseAssignmentExpression());
         }
     }
+    
     return expr;
 }
 
@@ -1975,10 +1916,10 @@ Parser.prototype.parseExpression = function() {
         SingleLineComment
 */
 Parser.prototype.parseComment = function() {
+    var token = this.token;
+    this.consume();
     // multi line comment
-    if (this.token.multiple) {
-        var token = this.token;
-        this.consume();
+    if (token.multiple) {
         return {
             type: Syntax.Block,
             // range: [start, end],
@@ -1986,15 +1927,10 @@ Parser.prototype.parseComment = function() {
         }
     }
     // single line comment
-    else {
-        var token = this.token;
-        this.consume();
-        
-        return {
-            type: Syntax.Line,
-            // range: [start, end],
-            value: token.text
-        }
+    return {
+        type: Syntax.Line,
+        // range: [start, end],
+        value: token.text
     }
 }
 

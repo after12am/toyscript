@@ -34,7 +34,8 @@ if (a) {
     a = 2
 }
 
-if (a in b) {
+b = [1]
+if (b.indexOf(a) !== -1) {
     a = 1
 }
 
@@ -86,6 +87,7 @@ if a:
     a = 2
     a = 2
 
+b = [1]
 if a in b:
     a = 1
 

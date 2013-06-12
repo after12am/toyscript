@@ -33,7 +33,7 @@ exports.compile = function(source) {
 */
 exports.run = function() {
     if (executable) {
-        return eval(executable);
+        return new Function(executable)();
     }
     throw new Error("has to call after compile. confirm whether compile() have been called");
 }
@@ -42,5 +42,5 @@ exports.run = function() {
     execute babescript
 */
 exports.interpret = function(source) {
-    return eval(exports.compile(source));
+    return new Function(exports.compile(source))();
 }

@@ -33,5 +33,6 @@ var Message = {
     IllegalShiftExpression:'Illegal shift expression',
     IllegalRelationalExpression:'Illegal relational expression',
     IllegalIsinstance:'arguments of isinstance build-in function has to be two',
-    IllegalTypeof:'argument of type build-in function has to be one'
+    IllegalTypeof:'argument of type build-in function has to be one',
+    ReferenceError: '{0} is not defined'
 };

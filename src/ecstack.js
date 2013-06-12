@@ -16,9 +16,19 @@ EcStack.prototype.pop = function() {
     this.current = this[this.length - 1][0];
 }
 
+EcStack.prototype.find = function(name) {
+    for (var i = 0; i < this.length; i++) {
+        for (var j = 0; j < this.length; j++) {
+            if (this[i][j][name]) return this[i][j][name];
+        }
+    }
+    return false;
+}
+
 /*
     Go back in ancestor, and find identifier
 */
+/*
 EcStack.prototype.findIdent = function(subtree, idents) {
     idents = idents || [];
     for (var i in subtree) {
@@ -33,4 +43,4 @@ EcStack.prototype.findIdent = function(subtree, idents) {
         }
     }
     return idents;
-}
+}*/
