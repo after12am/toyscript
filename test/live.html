@@ -6,13 +6,16 @@
 </head>
 <body>
 <script type="text/javascript" src="../build/babe.js"></script>
+<script type="text/babe" src="hello.babe"></script>
 <script type="text/babe">
 
-class HelloBabe:
+class Babe:
     constructor():
-        console.log("Hello there, this is babe.js!")
+        this.name = 'babe.js'
+    hello():
+        console.log("Hello there, this is " + this.name + "!")
 
-new HelloBabe()
+(new Babe()).hello()
 
 </script>
 </body>

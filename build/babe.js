@@ -55,35 +55,6 @@ exports.run = function() {
 exports.interpret = function(source) {
     return new Function(exports.compile(source))();
 }
-
-/*
-    When run on the browser, execute babe code.
-    
-    <script type="text/babe">
-        # something babe code
-    </script>
-*/
-function ready() {
-    if (document.readyState === 'complete') {
-        // var s = +new Date();
-        var elements = document.getElementsByTagName('script');
-        for (var i = 0; i < elements.length; i++) {
-            if (elements[i].getAttribute('type').match('text/babe')) {
-                var code = elements[i].innerHTML;
-                var k = + new Lexer().matchLineTerminator(code.substring(0, 1));
-                exports.interpret(code.substr(k));
-            }
-        }
-        // console.log(+new Date() - s);
-        return;
-    }
-    setTimeout(ready);
-}
-
-try {
-    // If run on node.js, thrown the exception.
-    if (window) setTimeout(ready);
-} catch (e) {}
 // src/compiler.js
 var Compiler = function(source) {
     this.name = 'Compiler';
@@ -118,6 +89,33 @@ Compiler.prototype.compile = function() {
         'error': log.hasError()
     }
 }
+
+function complete() {
+    var elements = document.getElementsByTagName('script');
+    for (var i = 0; i < elements.length; i++) {
+        var e = elements[i];
+        if (e.type && e.type.match('text/babe')) {
+            if (code = e.innerHTML) exports.interpret(code);
+            if (e.src) {
+                var xhr　= new XMLHttpRequest();
+                xhr.open('GET', e.src, true);
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        exports.interpret(xhr.responseText);
+                    }
+                }
+                xhr.send();
+            }
+        }
+    }
+}
+
+function ready() {
+    if (document.readyState === 'complete') complete();
+    else setTimeout(ready);
+}
+
+if (this.window) setTimeout(ready);
 // src/ecstack.js
 var EcStack = function() {
     Array.call(this, arguments);

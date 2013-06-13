@@ -1,0 +1,7 @@
+class Babe:
+    constructor():
+        this.name = 'babe.js'
+    say():
+        console.log("Babe is called by src")
+
+(new Babe()).say()

@@ -31,3 +31,30 @@ Compiler.prototype.compile = function() {
         'error': log.hasError()
     }
 }
+
+function complete() {
+    var elements = document.getElementsByTagName('script');
+    for (var i = 0; i < elements.length; i++) {
+        var e = elements[i];
+        if (e.type && e.type.match('text/babe')) {
+            if (code = e.innerHTML) exports.interpret(code);
+            if (e.src) {
+                var xhr　= new XMLHttpRequest();
+                xhr.open('GET', e.src, true);
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        exports.interpret(xhr.responseText);
+                    }
+                }
+                xhr.send();
+            }
+        }
+    }
+}
+
+function ready() {
+    if (document.readyState === 'complete') complete();
+    else setTimeout(ready);
+}
+
+if (this.window) setTimeout(ready);
