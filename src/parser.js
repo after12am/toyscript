@@ -685,14 +685,10 @@ Parser.prototype.parseForStatement = function() {
         continue
 */
 Parser.prototype.parseContinueStatement = function() {
-    
     this.expect('continue');
-    
     if (!(this.token.kind === Token.NEWLINE 
        || this.token.kind === Token.EOF)) this.assert(Message.IllegalContinue);
-    
     if (!this.state.inIteration()) this.assert(Message.IllegalContinuePosition);
-    
     return {
         type: Syntax.ContinueStatement
     };
@@ -705,14 +701,10 @@ Parser.prototype.parseContinueStatement = function() {
         break
 */
 Parser.prototype.parseBreakStatement = function() {
-    
     this.expect('break');
-    
     if (!(this.token.kind === Token.NEWLINE 
        || this.token.kind === Token.EOF)) this.assert(Message.IllegalBreak);
-    
     if (!this.state.inIteration()) this.assert(Message.IllegalBreakPosition);
-    
     return {
         type: Syntax.BreakStatement
     };
@@ -727,22 +719,14 @@ Parser.prototype.parseBreakStatement = function() {
 Parser.prototype.parseReturnStatement = function() {
     
     this.expect('return');
-    
     var argument = null;
     
-    if (this.state.current.indexOf(State.InFunction) === -1) {
-        this.assert(Message.IllegalReturn);
-    }
+    if (this.state.current.indexOf(State.InFunction) === -1) this.assert(Message.IllegalReturn);
     
     if (!(this.token.kind === Token.NEWLINE 
-       || this.token.kind === Token.EOF)) {
-        argument = this.parseExpression();
-    }
-    
+       || this.token.kind === Token.EOF)) argument = this.parseExpression();
     if (!(this.token.kind === Token.NEWLINE 
-       || this.token.kind === Token.EOF)) {
-        this.assert(Message.IllegalReturnArgument);
-    }
+       || this.token.kind === Token.EOF)) this.assert(Message.IllegalReturnArgument);
     
     return {
         type: Syntax.ReturnStatement,
@@ -759,13 +743,10 @@ Parser.prototype.parseReturnStatement = function() {
 Parser.prototype.parseRaiseStatement = function() {
     
     this.expect('raise');
-    
     var argument = null;
     
     if (!(this.token.kind === Token.NEWLINE 
-       || this.token.kind === Token.EOF)) {
-        argument = this.parseExpression()
-    }
+       || this.token.kind === Token.EOF)) argument = this.parseExpression()
     
     if (argument === null) {
         argument = {
@@ -805,9 +786,6 @@ Parser.prototype.parseTryStatement = function() {
     
     /*
         Catch :
-            catch ( Identifier ) Block
-             |
-             v
             except Identifieropt: Block
     */
     handlers.push(this.parseExceptStatement());
@@ -841,7 +819,6 @@ Parser.prototype.parseTryStatement = function() {
 Parser.prototype.parseExceptStatement = function() {
     
     this.expect('except');
-    
     var param, body;
     
     /*
@@ -854,7 +831,6 @@ Parser.prototype.parseExceptStatement = function() {
             name: 'e'
         };
     }
-    
     param = param || this.parseIdentifier();
     
     this.ecstack.push([]);
@@ -1096,7 +1072,7 @@ Parser.prototype.parsePropertyNameAndValueList = function() {
          || this.matchKind(Token.EOF)) {
              this.consume();
              continue;
-         }
+        }
         var k = this.parsePropertyName();
         this.expect(':');
         var v = this.parseAssignmentExpression();
@@ -1119,9 +1095,7 @@ Parser.prototype.parsePropertyNameAndValueList = function() {
         NumericLiteral
 */
 Parser.prototype.parsePropertyName = function() {
-    
     var token = this.token;
-    
     if (this.token.kind === Token.IDENTIFIER) {
         this.consume();
         return {
@@ -1129,7 +1103,6 @@ Parser.prototype.parsePropertyName = function() {
             value: token.text 
         };
     }
-    
     if (this.token.kind === Token.STRING) {
         this.consume();
         return {
@@ -1137,7 +1110,6 @@ Parser.prototype.parsePropertyName = function() {
             value: token.text
         };
     }
-    
     if (this.token.kind === Token.DIGIT) {
         this.consume();
         return {
@@ -1172,7 +1144,6 @@ Parser.prototype.parseGroupingOperator = function() {
 Parser.prototype.parseMemberExpression = function(allow_call) {
     
     if (this.match('new')) return this.parseNewExpression();
-    
     var expr = this.parseFunctionExpression() || this.parsePrimaryExpression();
     
     while (1) {
@@ -1278,7 +1249,6 @@ Parser.prototype.parseArgumentList = function() {
         ( expression ): ExpressionStatement
 */
 Parser.prototype.parseFunctionExpression = function() {
-    
     /*
         lambda expression
             
@@ -1291,7 +1261,6 @@ Parser.prototype.parseFunctionExpression = function() {
             })
     */
     if (this.match('(')) {
-        
         var k = 1;
         while (this.lookahead(k).text !== ':') {
             if (this.lookahead(k).kind === Token.NEWLINE
@@ -1301,17 +1270,18 @@ Parser.prototype.parseFunctionExpression = function() {
         
         if (this.lookahead(k).text === ':') {
             var body, arguments = this.parseFormalParameterList();
-            
             this.expect(':');
             
             this.ecstack.push([]);
             this.state.push([State.InFunction]);
+            
             body = this.parseExpressionStatement();
             body = arguments.init.concat(body);
             body.push({
                 type: Syntax.ReturnStatement,
                 argument: body.pop().expression
             });
+            
             this.state.pop();
             this.ecstack.pop();
             
@@ -1390,53 +1360,62 @@ Parser.prototype.parseUnaryExpression = function() {
     var token = this.token;
     
     // 11.4.1 - 11.4.3
-    if (this.match('delete')) {
-        this.consume();
-        return {
-            type: Syntax.UnaryExpression,
-            operator: token.text,
-            argument: this.parseUnaryExpression()
-        };
+    if (this.matchKind('delete')) {
+        if (this.match('delete')) {
+            this.consume();
+            return {
+                type: Syntax.UnaryExpression,
+                operator: token.text,
+                argument: this.parseUnaryExpression()
+            };
+        }
     }
     
-    // 11.4.4 - 11.4.5
-    if (this.match('++') || this.match('--')) {
-        this.consume();
-        return {
-            type: Syntax.UpdateExpression,
-            operator: token.text,
-            argument: this.parseUnaryExpression(),
-            prefix: true
-        };
+    if (this.matchKind(Token.PUNCTUATOR)) {
+        // 11.4.4 - 11.4.5
+        if (this.match('++') || this.match('--')) {
+            this.consume();
+            return {
+                type: Syntax.UpdateExpression,
+                operator: token.text,
+                argument: this.parseUnaryExpression(),
+                prefix: true
+            };
+        }
+
+        // 11.4.6 - 11.4.9
+        if (this.match('+') || this.match('-') || this.match('~') || this.match('!')) {
+            this.consume();
+            return {
+                type: Syntax.UnaryExpression,
+                operator: token.text,
+                argument: this.parseUnaryExpression()
+            };
+        }
     }
     
-    // 11.4.6 - 11.4.9
-    if (this.match('+') || this.match('-') || this.match('~') || this.match('!')) {
-        this.consume();
-        return {
-            type: Syntax.UnaryExpression,
-            operator: token.text,
-            argument: this.parseUnaryExpression()
-        };
-    }
     
     // 11.4.9
-    if (this.match('not')) {
-        this.consume();
-        return {
-            type: Syntax.UnaryExpression,
-            operator: '!',
-            argument: this.parseUnaryExpression()
-        };
+    if (this.matchKind('not')) {
+        if (this.match('not')) {
+            this.consume();
+            return {
+                type: Syntax.UnaryExpression,
+                operator: '!',
+                argument: this.parseUnaryExpression()
+            };
+        }
     }
     
-    if (this.match('typeof')) {
-        this.consume();
-        return {
-            type: Syntax.UnaryExpression,
-            operator: 'typeof',
-            argument: this.parseUnaryExpression()
-        };
+    if (this.matchKind('typeof')) {
+        if (this.match('typeof')) {
+            this.consume();
+            return {
+                type: Syntax.UnaryExpression,
+                operator: 'typeof',
+                argument: this.parseUnaryExpression()
+            };
+        }
     }
     
     return this.parsePostfixExpression();
@@ -1550,7 +1529,6 @@ Parser.prototype.parseRelationalExpression = function() {
         var right = this.parseAssignmentExpression();
         
         if (token.text === 'in') {
-            
             /*
                 not "a" in {"a": 1}:
             */
@@ -1762,7 +1740,9 @@ Parser.prototype.parseBitwiseORExpression = function() {
         LogicalANDExpression and BitwiseORExpression
 */
 Parser.prototype.parseLogicalANDExpression = function() {
+    
     var expr = this.parseBitwiseORExpression();
+    
     while (this.match('and')) {
         this.consume();
         expr = {
@@ -1772,6 +1752,7 @@ Parser.prototype.parseLogicalANDExpression = function() {
             right: this.parseBitwiseORExpression()
         }
     }
+    
     return expr;
 }
 
@@ -1783,7 +1764,9 @@ Parser.prototype.parseLogicalANDExpression = function() {
         LogicalORExpression or LogicalANDExpression
 */
 Parser.prototype.parseLogicalORExpression = function() {
+    
     var expr = this.parseLogicalANDExpression();
+    
     while (this.match('or')) {
         this.consume();
         expr = {
@@ -1793,6 +1776,7 @@ Parser.prototype.parseLogicalORExpression = function() {
             right: this.parseBitwiseORExpression()
         }
     }
+    
     return expr;
 }
 
@@ -1916,8 +1900,10 @@ Parser.prototype.parseExpression = function() {
         SingleLineComment
 */
 Parser.prototype.parseComment = function() {
+    
     var token = this.token;
     this.consume();
+    
     // multi line comment
     if (token.multiple) {
         return {
@@ -1926,6 +1912,7 @@ Parser.prototype.parseComment = function() {
             value: token.text
         }
     }
+    
     // single line comment
     return {
         type: Syntax.Line,
@@ -1942,11 +1929,15 @@ Parser.prototype.parseComment = function() {
 */
 Parser.prototype.parseFunctionDeclaration = function() {
     this.expect('def');
-    var id = this.parseIdentifier();
-    var params = this.parseFormalParameterList();
-    var body = this.parseFunctionBody();
+    var id, params, body;
+    
+    id = this.parseIdentifier();
+    params = this.parseFormalParameterList();
+    
+    body = this.parseFunctionBody();
     body = body.shift();
     body.body = params.init.concat(body.body);
+    
     return {
         type: Syntax.FunctionDeclaration,
         id: id,
@@ -1963,8 +1954,8 @@ Parser.prototype.parseFunctionDeclaration = function() {
         FormalParameterList , AssignmentExpression
 */
 Parser.prototype.parseFormalParameterList = function() {
-    this.expect('(');
     var params = [], init = [];
+    this.expect('(');
     while (!this.match(')')) {
         if (this.match(',')) this.consume();
         var param = this.parsePrimaryExpression();
@@ -2032,9 +2023,7 @@ Parser.prototype.parseFunctionBody = function() {
         class Identifier ( FormalParameterListopt )opt : ClassBody 
 */
 Parser.prototype.parseClassDeclaration = function() {
-    
     this.expect('class');
-    
     var id = this.parseIdentifier();
     var body, inherit;
     
@@ -2056,7 +2045,6 @@ Parser.prototype.parseClassDeclaration = function() {
 }
 
 Parser.prototype.parseClassBody = function(cls) {
-    
     this.expect(':');
     
     this.ecstack.push([]);
