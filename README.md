@@ -1,4 +1,20 @@
-<div  align="center">
-  <p><img src="http://files.softicons.com/download/food-drinks-icons/caldo-caldo-icons-by-gustomela/png/512x512/caldocaldo.png" width="230px"/></p>
-  <p>babe.js is a small programing language works on your browser.</p>
-</div>
+babe.js
+=======
+
+babe.js is a small programing language works on your browser and now under development.
+
+
+## A simple example
+
+```html
+<script type="text/javascript" src="babe.js"></script>
+<script type="text/babe">
+class Babe:
+    constructor():
+        this.name = 'babe.js'
+    hello():
+        console.log("Hello there, this is " + this.name + "!")
+
+(new Babe()).hello()
+</script>
+```
