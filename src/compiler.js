@@ -39,7 +39,7 @@ function complete() {
         if (e.type && e.type.match('text/babe')) {
             if (code = e.innerHTML) exports.interpret(code);
             if (e.src) {
-                var xhr　= new XMLHttpRequest();
+                var xhr = new XMLHttpRequest();
                 xhr.open('GET', e.src, true);
                 xhr.onreadystatechange = function() {
                     if (xhr.readyState === 4 && xhr.status === 200) {

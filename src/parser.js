@@ -119,7 +119,9 @@ Parser.prototype.parseProgram = function() {
         SourceElements SourceElement
 */
 Parser.prototype.parseSourceElements = function() {
+    
     var nodes = [];
+    
     while (1) {
         /*
             The expected order is <EXPR><EOF>
@@ -128,23 +130,25 @@ Parser.prototype.parseSourceElements = function() {
                 a = 1<EOF>
         */
         if (this.matchKind(Token.EOF)) break;
+        if (this.matchKind(Token.INDENT)) {
+            if (this.state.current.indexOf(State.InFunction) !== -1) break;
+            this.expect(0);
+        }
+        
         if (this.match('class')) {
             node = this.parseClassDeclaration();
             nodes = nodes.concat(node);
-        } else if (node = this.parseSourceElement()) {
+            continue;
+        }
+        
+        if (node = this.parseSourceElement()) {
             if (node.type === Syntax.PassStatement) {
                 node.type = Syntax.EmptyStatement;
             }
             nodes.push(node);
         }
-        
-        if (this.token.kind === Token.INDENT) {
-            if (this.state.current.indexOf(State.InFunction) !== -1) {
-                break;
-            }
-            this.expect(0);
-        }
     }
+    
     return nodes;
 }
 
@@ -175,10 +179,7 @@ Parser.prototype.parseSourceElement = function() {
     /*
         statement(s) is expected to end with new line.
     */
-    if (this.matchKind(Token.NEWLINE)) {
-        this.consume();
-    }
-    
+    if (this.matchKind(Token.NEWLINE)) this.consume();
     return expr;
 }
 
@@ -266,31 +267,24 @@ Parser.prototype.parseBlock = function() {
     
     this.expect(':');
     
+    var token = this.token;
+    var exprs = [];
+    
     /*
         if a: a = 1
         
         if a:
             a = 1
-    */
-    if (this.matchKind(Token.NEWLINE)) {
-        this.consume();
-    }
-    
-    var token = this.token;
-    var exprs = [];
-    
-    if (this.matchKind(Token.INDENT)) {
-        this.indent++;
-        exprs = this.parseStatementList();
-        this.indent--;
-    }
-    /*
-        would parse this:
         
         if a: a = 1
         a = 2
     */
-    else {
+    if (this.matchKind(Token.NEWLINE)) {
+        this.consume();
+        this.indent++;
+        exprs = this.parseStatementList();
+        this.indent--;
+    } else {
         exprs = [this.parseStatement()];
     }
     
@@ -301,21 +295,17 @@ Parser.prototype.parseBlock = function() {
         return p || c.type !== Syntax.EmptyStatement;
     }, false);
     
-    if (pass) {
-        exprs = exprs.map(function(expr) {
-            // pass statement means empty statement in javascript
+    if (!pass) this.assert(Message.IllegalBlock);
+    
+    return {
+        type: Syntax.BlockStatement,
+        body: exprs.map(function(expr) {
             if (expr.type === Syntax.PassStatement) {
                 expr.type = Syntax.EmptyStatement;
             }
             return expr;
-        });
-        return {
-            type: Syntax.BlockStatement,
-            body: exprs
-        };
-    }
-    
-    this.assert(Message.IllegalBlock);
+        })
+    };
 }
 
 /*
@@ -331,49 +321,14 @@ Parser.prototype.parseStatementList = function() {
     var indent = this.indent * this.indent_size;
     
     while (1) {
-        /*
-            would parse this:
-            
-                if a:
-                    a = 1
-                a = 1
-                
-                if a: a = 1
-                a = 2
-                
-                if a:
-                    a = 1
-                    
-                    a = 2
-                    a = 2
-        */
-        if (this.matchKind(Token.NEWLINE)) {
-            this.consume();
-            if (this.lookback(2).kind === Token.INDENT) {
-                exprs.push({
-                    type: Syntax.PassStatement
-                });
-            }
-        }
-        
-        if (this.matchKind(Token.EOF)) break;
+        if (this.matchKind(Token.EOF)
+         || this.matchKind(Token.NEWLINE)) break;
         if (this.matchKind(Token.INDENT)) {
             if (this.token.text < indent) break;
             if (this.token.text > indent) this.assert(Message.IllegalIndentSize);
             this.consume();
-            continue;
         }
-        
-        if (expr = this.parseSourceElement()) {
-            exprs.push(expr);
-        }
-        
-        if (this.matchKind(Token.INDENT)) {
-            if (this.token.text < indent) break;
-            if (this.token.text > indent) this.assert(Message.IllegalIndentSize);
-            this.consume();
-            continue;
-        }
+        exprs.push(this.parseSourceElement());
     }
     
     return exprs;
@@ -633,6 +588,7 @@ Parser.prototype.parseForStatement = function() {
             '__k'
         )).body.concat(body.body);
     }
+    
     /*
         would parse this:
             
@@ -645,7 +601,7 @@ Parser.prototype.parseForStatement = function() {
             for v in a = {'k': 1, 'i': 2}:
                 console.log(v)
     */
-    else if (exprs.length === 2) {
+    if (exprs.length === 2) {
         /*
             part of :
                 a = {'arg': 1}
@@ -722,7 +678,6 @@ Parser.prototype.parseReturnStatement = function() {
     var argument = null;
     
     if (this.state.current.indexOf(State.InFunction) === -1) this.assert(Message.IllegalReturn);
-    
     if (!(this.token.kind === Token.NEWLINE 
        || this.token.kind === Token.EOF)) argument = this.parseExpression();
     if (!(this.token.kind === Token.NEWLINE 
@@ -946,26 +901,29 @@ Parser.prototype.parseLiteral = function() {
         var token = this.token;
         var text = token.text;
         this.consume();
-        /*
-            a = 1
-            b = 1
-            "{a} + {b} = 2"
-             |
-             v
-            var a = 1
-            var b = 1
-            '1 + 1 = 2'
-        */
         if (token.delimiter === '"') {
-            var m, that = this, rep = {};
-            var m = token.text.match(/{(.*?)}/g);
-            if (m) {
-                m.forEach(function(ident) {
-                    var k = ident.match(/{(.*)}/)[1];
-                    rep[k] = that.ecstack.current[k].value;
-                });
-                text = text.format(rep);
-            }
+            // "{a} + {b} = 2" -> '1 + 1 = 2'
+            // "{this.name}" -> 'babe'
+            text = (function(text, ecstack) {
+                var m, rep = {};
+                var m = text.match(/{(.*?)}/g);
+                if (m) {
+                    for (var i = 0; i < m.length; i++) {   
+                        var k = m[i].match(/{(this)?\.?(.*)}/);
+                        if (k[1]) {
+                            if (ref = ecstack.find(k[2])) {
+                                rep['{0}.{1}'.format(k[1], k[2])] = ref.value;
+                            }
+                        }
+                        if (k[2]) {
+                            if (ecstack.current[k[2]]) {
+                                rep[k[2]] = ecstack.current[k[2]].value;
+                            }
+                        }
+                    }
+                }
+                return text.format(rep);
+            })(text, this.ecstack);
         }
         return {
             type: Syntax.Literal,
@@ -1262,13 +1220,13 @@ Parser.prototype.parseFunctionExpression = function() {
     */
     if (this.match('(')) {
         var k = 1;
-        while (this.lookahead(k).text !== ':') {
+        while (this.lookahead(k).text !== ')') {
             if (this.lookahead(k).kind === Token.NEWLINE
              || this.lookahead(k).kind === Token.EOF) break;
             k++;
         }
         
-        if (this.lookahead(k).text === ':') {
+        if (this.lookahead(++k).text === ':') {
             var body, arguments = this.parseFormalParameterList();
             this.expect(':');
             
@@ -1359,18 +1317,6 @@ Parser.prototype.parseUnaryExpression = function() {
     
     var token = this.token;
     
-    // 11.4.1 - 11.4.3
-    if (this.matchKind('delete')) {
-        if (this.match('delete')) {
-            this.consume();
-            return {
-                type: Syntax.UnaryExpression,
-                operator: token.text,
-                argument: this.parseUnaryExpression()
-            };
-        }
-    }
-    
     if (this.matchKind(Token.PUNCTUATOR)) {
         // 11.4.4 - 11.4.5
         if (this.match('++') || this.match('--')) {
@@ -1394,25 +1340,33 @@ Parser.prototype.parseUnaryExpression = function() {
         }
     }
     
-    
-    // 11.4.9
-    if (this.matchKind('not')) {
-        if (this.match('not')) {
+    if (this.matchKind('delete') || this.matchKind('typeof') || this.matchKind('not')) {
+        // 11.4.1
+        if (this.match('delete')) {
             this.consume();
             return {
                 type: Syntax.UnaryExpression,
-                operator: '!',
+                operator: token.text,
                 argument: this.parseUnaryExpression()
             };
         }
-    }
-    
-    if (this.matchKind('typeof')) {
+        
+        // 11.4.3
         if (this.match('typeof')) {
             this.consume();
             return {
                 type: Syntax.UnaryExpression,
                 operator: 'typeof',
+                argument: this.parseUnaryExpression()
+            };
+        }
+        
+        // 11.4.9
+        if (this.match('not')) {
+            this.consume();
+            return {
+                type: Syntax.UnaryExpression,
+                operator: '!',
                 argument: this.parseUnaryExpression()
             };
         }
@@ -2047,8 +2001,6 @@ Parser.prototype.parseClassDeclaration = function() {
 Parser.prototype.parseClassBody = function(cls) {
     this.expect(':');
     
-    this.ecstack.push([]);
-    this.state.push([State.InClass]);
     this.indent++;
     
     var declarations = [], variables = [];
@@ -2062,7 +2014,8 @@ Parser.prototype.parseClassBody = function(cls) {
         }
         
         if (this.matchKind(Token.INDENT)) {
-            if (this.token.text < this.indent * this.indent_size) break;
+            if (this.lookahead(1).kind !== Token.NEWLINE
+             && this.token.text < this.indent * this.indent_size) break;
             this.consume();
             continue;
         }
@@ -2091,16 +2044,17 @@ Parser.prototype.parseClassBody = function(cls) {
     
     constructor.declarations[0].init.body.body = variables.concat(constructor.declarations[0].init.body.body);
     declarations.unshift(constructor);
+    declarations.push({
+        type: Syntax.EmptyStatement
+    });
     
     this.indent--;
-    this.state.pop();
-    this.ecstack.pop();
-    
+        
     return declarations;
 }
 
 Parser.prototype.parseClassConstructorDeclaration = function(cls, init) {
-    var id, params = [];
+    var that = this, id, params = [];
     var body = {
         type: Syntax.BlockStatement,
         body: []
@@ -2111,6 +2065,15 @@ Parser.prototype.parseClassConstructorDeclaration = function(cls, init) {
         body = this.parseFunctionBody().shift();
         body.body = params.init.concat(body.body);
         params = params.params;
+        body.body.forEach(function(expr) {
+            if (expr
+             && expr.expression
+             && expr.expression.left
+             && expr.expression.left.object
+             && expr.expression.left.object.type === Syntax.ThisExpression) {
+                that.ecstack.current[expr.expression.left.property.name] = expr.expression.right;
+            }
+        });
     }
     return {
         type: Syntax.VariableDeclaration,

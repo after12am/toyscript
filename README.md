@@ -13,7 +13,7 @@ class Babe:
     constructor():
         this.name = 'babe.js'
     hello():
-        console.log("Hello there, this is " + this.name + "!")
+        console.log("Hello there, this is {this.name}!")
 
 (new Babe()).hello()
 </script>

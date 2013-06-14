@@ -19,7 +19,7 @@ EcStack.prototype.pop = function() {
 EcStack.prototype.find = function(name) {
     for (var i = 0; i < this.length; i++) {
         for (var j = 0; j < this.length; j++) {
-            if (this[i][j][name]) return this[i][j][name];
+            if (this[i][j] && this[i][j][name]) return this[i][j][name];
         }
     }
     return false;

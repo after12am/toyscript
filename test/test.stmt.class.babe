@@ -42,7 +42,6 @@ Person.prototype.say = function () {
     print('my name is ' + this.name)
 }
 
-
 var Bob = function () {
     this.name = 'bob'
 }

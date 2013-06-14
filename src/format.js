@@ -7,7 +7,7 @@ if (String.prototype.format == undefined) {
             })
         */
         if (typeof args == "object") {
-            return this.replace(/\{(\w+)\}/g, function(m, k) {
+            return this.replace(/\{([\w\.]+)\}/g, function(m, k) {
                 return args[k];
             });
         }

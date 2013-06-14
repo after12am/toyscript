@@ -33,6 +33,15 @@ b = 1
 a = 1
 b = 1
 '{a} + {b} = 2'
+
+var Person = function () {
+    this.name = 'babe'
+}
+Person.prototype.say = function () {
+    console.log('babe')
+}
+
+new Person().say()
 +/
 a = none
 
@@ -61,3 +70,10 @@ b = 1
 a = 1
 b = 1
 '{a} + {b} = 2'
+
+class Person:
+    constructor():
+        this.name = "babe"
+    say():
+        console.log("{this.name}")
+(new Person()).say()
