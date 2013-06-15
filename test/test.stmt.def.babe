@@ -32,6 +32,13 @@ function test() {
 function func() {
     
 }
+
+var a = 1
+function test() {
+    var a = 2
+    a = 3
+    var b = 2
+}
 +/
 def func():
     return
@@ -56,3 +63,9 @@ def test():
 
 def func():
     pass
+
+a = 1
+def test():
+    a = 2
+    a = 3
+    b = 2

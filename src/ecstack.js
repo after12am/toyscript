@@ -17,30 +17,15 @@ EcStack.prototype.pop = function() {
 }
 
 EcStack.prototype.find = function(name) {
-    for (var i = 0; i < this.length; i++) {
-        for (var j = 0; j < this.length; j++) {
-            if (this[i][j] && this[i][j][name]) return this[i][j][name];
-        }
-    }
-    return false;
-}
-
-/*
-    Go back in ancestor, and find identifier
-*/
-/*
-EcStack.prototype.findIdent = function(subtree, idents) {
-    idents = idents || [];
-    for (var i in subtree) {
-        var tree = subtree[i];
-        if (typeof tree === 'object') {
-            if (tree.type === Syntax.Identifier
-             && this.current[tree.name] === undefined
-             && idents.indexOf(tree.name) === -1) {
-                idents.push(tree.name);
+    var ret = false;
+    for (var i = this.length - 1; i >= 0; i--) {
+        for (var j = this[i].length - 1; j >= 0; j--) {
+            if (this[i][j][name]) {
+                ret = this[i][j][name];
+                break;
             }
-            this.findIdent(tree, idents);
         }
+        if (ret) break;
     }
-    return idents;
-}*/
+    return ret;
+}

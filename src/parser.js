@@ -161,9 +161,8 @@ Parser.prototype.parseSourceElements = function() {
         FunctionDeclaration
 */
 Parser.prototype.parseSourceElement = function() {
+    
     /*
-        The expected order is <NEWLINE>|<INDENT>|<EOF>
-        
         if a:
             a = 1
         <EOF>
@@ -171,15 +170,12 @@ Parser.prototype.parseSourceElement = function() {
     if (this.matchKind(Token.EOF)) return;
     
     var expr;
-    switch (this.token.text) {
-    case 'def': expr = this.parseFunctionDeclaration(); break;
-    default: expr = this.parseStatement(); break;
-    }
+    if (this.match('def')) expr = this.parseFunctionDeclaration();
+    else expr = this.parseStatement();
     
-    /*
-        statement(s) is expected to end with new line.
-    */
+    // statement(s) is expected to end with new line.
     if (this.matchKind(Token.NEWLINE)) this.consume();
+    
     return expr;
 }
 
@@ -200,45 +196,15 @@ Parser.prototype.parseSourceElement = function() {
 */
 Parser.prototype.parseStatement = function() {
     
-    if (this.token.kind === Token.PUNCTUATOR) {
-        if (this.match(':')) return this.parseBlock();
+    if (this.matchKind(Token.IDENTIFIER)
+    && !this.ecstack.current[this.token.text]) {
+        if (this.lookahead(1).text === '=') return this.parseVariableStatement();
+        if (this.lookahead(1).kind == Token.NEWLINE
+         || this.lookahead(1).kind == Token.EOF) this.assert(Message.IllegalIdentInitialize);
     }
     
-    /*
-        A problem of variable statement have been solved.
-        
-        a = 1
-        def test():
-            a = 2
-            a = 3
-            b = 2
-         |
-         v
-        var a = 1
-        function () {
-            var a = 2;
-            a = 3;
-            var b = 2;
-        }
-    */
-    if (this.token.kind === Token.IDENTIFIER) {
-        if (!this.ecstack.current[this.token.text]) {
-            /*
-                a()
-                a = 1
-                 |
-                 v
-                a()
-                a = 1 // expect: var a = 1
-            */
-            if (this.lookahead(1).text === '=') {
-                return this.parseVariableStatement();
-            }
-            
-            if (this.lookahead(1).kind == Token.NEWLINE) {
-                this.assert(Message.IllegalIdentInitialize);
-            }
-        }
+    if (this.matchKind(Token.PUNCTUATOR)) {
+        if (this.match(':')) return this.parseBlock();
     }
     
     switch (this.token.kind) {
@@ -354,23 +320,18 @@ Parser.prototype.parseVariableStatement = function() {
     VariableDeclarationList :
         VariableDeclaration
         VariableDeclarationList , VariableDeclaration
-         |
-         v
-        VariableDeclaration
 */
 Parser.prototype.parseVariableDeclarationList = function() {
     
     var variables = [];
     
     while (1) {
-        var v = this.parseVariableDeclaration();
-        variables.push(v);
-        this.ecstack.current[v.id.name] = v.init;
-        if (!this.match(',')
-         || this.token.kind === Token.EOF
+        if (this.match(',')) this.consume();
+        if (this.token.kind === Token.EOF
          || this.token.kind === Token.NEWLINE) break;
-        this.consume();
+        variables.push(this.parseVariableDeclaration());
     };
+    
     return variables;
 }
 
@@ -381,10 +342,13 @@ Parser.prototype.parseVariableDeclarationList = function() {
         Identifier Initialiseropt
 */
 Parser.prototype.parseVariableDeclaration = function() {
+    var id = this.parseIdentifier();
+    var init = this.parseInitialiser();
+    this.ecstack.current[id.name] = init;
     return {
         type: Syntax.VariableDeclarator,
-        id: this.parseIdentifier(),
-        init: this.parseInitialiser()
+        id: id,
+        init: init
     };
 }
 
@@ -439,9 +403,20 @@ Parser.prototype.parseExpressionStatement = function() {
     if (this.match(':')) return;
     
     if (expr = this.parseExpression()) {
-        if (expr.type === Syntax.AssignmentExpression) {
+        if (expr.type === Syntax.AssignmentExpression
+         && expr.left.name) {
             this.ecstack.current[expr.left.name] = expr.right;
         }
+        
+        if (expr
+         && expr.left
+         && expr.left.object
+         && expr.left.object.type === Syntax.ThisExpression) {
+            var head = this.ecstack.pop();
+            this.ecstack.current['this.{0}'.format(expr.left.property.name)] = expr.right;
+            this.ecstack.push(head || []);
+        }
+        
         return {
             type: Syntax.ExpressionStatement,
             expression: expr
@@ -898,40 +873,60 @@ Parser.prototype.parseLiteral = function() {
     }
     
     if (this.token.kind === Token.STRING) {
-        var token = this.token;
-        var text = token.text;
-        this.consume();
-        if (token.delimiter === '"') {
-            // "{a} + {b} = 2" -> '1 + 1 = 2'
-            // "{this.name}" -> 'babe'
-            text = (function(text, ecstack) {
-                var m, rep = {};
-                var m = text.match(/{(.*?)}/g);
-                if (m) {
-                    for (var i = 0; i < m.length; i++) {   
-                        var k = m[i].match(/{(this)?\.?(.*)}/);
-                        if (k[1]) {
-                            if (ref = ecstack.find(k[2])) {
-                                rep['{0}.{1}'.format(k[1], k[2])] = ref.value;
-                            }
-                        }
-                        if (k[2]) {
-                            if (ecstack.current[k[2]]) {
-                                rep[k[2]] = ecstack.current[k[2]].value;
-                            }
-                        }
-                    }
-                }
-                return text.format(rep);
-            })(text, this.ecstack);
+        if (this.token.delimiter === '"') {
+            return this.parseStringVariable();
         }
+        var token = this.token;
+        this.consume();
         return {
             type: Syntax.Literal,
-            value: text
+            value: token.text,
+            raw: "'{0}'".format(token.text)
         };
     }
     
     // RegExp
+}
+
+Parser.prototype.parseStringVariable = function() {
+    
+    var token = this.token;
+    this.consume();
+    
+    if (arguments = token.text.match(/\{([\w\.]+)\}/g)) {
+        var i = 0;
+        var text = token.text.replace(/\{([\w\.]+)\}/g, function(str, p1, p2) {
+            return '{{0}}'.format(i++)
+        });
+        return {
+            type: Syntax.CallExpression,
+            callee: {
+                type: Syntax.MemberExpression,
+                computed: false,
+                object: {
+                    type: Syntax.Literal,
+                    value: text,
+                    raw: "\"{0}\"".format(text)
+                },
+                property: {
+                    type: Syntax.Identifier,
+                    name: 'format'
+                }
+            },
+            arguments: arguments.map(function(argument) {
+                return {
+                    type: Syntax.Identifier,
+                    name: argument.match(/\{([\w\.]+)\}/)[1]
+                }
+            })
+        };
+    }
+    
+    return {
+        type: Syntax.Literal,
+        value: token.text,
+        raw: "\"{0}\"".format(token.text)
+    };
 }
 
 /*
@@ -1505,11 +1500,11 @@ Parser.prototype.parseRelationalExpression = function() {
                 
                 if (right.type === Syntax.Identifier) {
                     // When identifier is not defined, raise ReferenceError
-                    var reference = this.ecstack.find(right.name)
-                    if (reference.type !== Syntax.ArrayExpression) {
+                    var ref = this.ecstack.find(right.name)
+                    if (ref.type !== Syntax.ArrayExpression) {
                         this.assert(Message.IllegalRelationalExpression);
                     }
-                    if (!reference) {
+                    if (!ref) {
                         this.assert(Message.ReferenceError.format(right.name));
                     }
                 }
@@ -1981,6 +1976,9 @@ Parser.prototype.parseClassDeclaration = function() {
     var id = this.parseIdentifier();
     var body, inherit;
     
+    this.ecstack.push([]);
+    this.state.push([State.InClass]);
+    
     if (this.match('(')) {
         this.consume();
         inherit = this.parseInheritDeclaration(id);
@@ -1994,6 +1992,9 @@ Parser.prototype.parseClassDeclaration = function() {
         body.unshift(inherit);
         body.unshift(head);
     }
+    
+    this.state.pop();
+    this.ecstack.pop();
     
     return body;
 }
@@ -2054,7 +2055,7 @@ Parser.prototype.parseClassBody = function(cls) {
 }
 
 Parser.prototype.parseClassConstructorDeclaration = function(cls, init) {
-    var that = this, id, params = [];
+    var id, params = [];
     var body = {
         type: Syntax.BlockStatement,
         body: []
@@ -2065,15 +2066,6 @@ Parser.prototype.parseClassConstructorDeclaration = function(cls, init) {
         body = this.parseFunctionBody().shift();
         body.body = params.init.concat(body.body);
         params = params.params;
-        body.body.forEach(function(expr) {
-            if (expr
-             && expr.expression
-             && expr.expression.left
-             && expr.expression.left.object
-             && expr.expression.left.object.type === Syntax.ThisExpression) {
-                that.ecstack.current[expr.expression.left.property.name] = expr.expression.right;
-            }
-        });
     }
     return {
         type: Syntax.VariableDeclaration,
@@ -2142,6 +2134,7 @@ Parser.prototype.parseInheritDeclaration = function(cls) {
 }
 
 Parser.prototype.parseClassFunctionDeclaration = function(cls) {
+    var that = this;
     var id = this.parseIdentifier();
     var params = this.parseFormalParameterList();
     var body = this.parseFunctionBody().shift();

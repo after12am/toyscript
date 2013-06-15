@@ -22,6 +22,3 @@ http://ja.wikipedia.org/wiki/%E5%AD%97%E5%8F%A5%E8%A7%A3%E6%9E%90
 + result of codegen of below babe code is verbose
 for k, v in a:
     console.log(v)
-
-+ replace with parse().body
-parseRelationalExpression
