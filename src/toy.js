@@ -15,21 +15,21 @@ exports.parse = function(source) {
 }
 
 /*
-    convenience function of babe.compile()
+    convenience function of toy.compile()
 */
 exports.codegen = function(nodes) {
     return escodegen.generate(nodes);
 }
 
 /*
-    convert javascript to babescript
+    convert javascript to toyscript
 */
 exports.compile = function(source) {
     return exports.codegen(exports.parse(source));
 }
 
 /*
-    execute babescript after compiled
+    execute toyscript after compiled
 */
 exports.run = function() {
     if (executable) {
@@ -39,7 +39,7 @@ exports.run = function() {
 }
 
 /*
-    execute babescript
+    execute toyscript
 */
 exports.interpret = function(source) {
     return new Function(exports.compile(source))();

@@ -1,0 +1,7 @@
+class Toy:
+    constructor():
+        this.name = 'toyscript'
+    hello():
+        return "Hello there, this is {this.name}!"
+
+console.log((new Toy()).hello())

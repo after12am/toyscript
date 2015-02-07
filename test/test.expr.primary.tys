@@ -35,7 +35,7 @@ b = 1
 '{a} + {b} = 2'
 
 var Person = function () {
-    this.name = 'babe'
+    this.name = 'toyscript'
 }
 Person.prototype.say = function () {
     console.log('{0}'.format(this.name))
@@ -73,7 +73,7 @@ b = 1
 
 class Person:
     constructor():
-        this.name = "babe"
+        this.name = "toyscript"
     say():
         console.log("{this.name}")
 (new Person()).say()

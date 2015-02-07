@@ -1,5 +1,5 @@
 {
-    "name": "babe.js",
+    "name": "toyscript.js",
     "version": "0.1.0",
     "devDependencies": {
         "grunt-node-qunit": "*",

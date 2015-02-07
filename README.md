@@ -1,20 +1,26 @@
-babe.js
-=======
+toyscript
+=========
 
-babe.js is a small programing language works on your browser and now under development.
+toyscript is a small programing language works on your browser.
 
 
-## A simple example
+## example
+
+Here is a quick example.
 
 ```html
-<script type="text/javascript" src="babe.js"></script>
-<script type="text/babe">
-class Babe:
+<script type="text/javascript" src="toyscript.js"></script>
+<script type="text/toyscript">
+class Toy:
     constructor():
-        this.name = 'babe.js'
+        this.name = 'toyscript'
     hello():
-        console.log("Hello there, this is {this.name}!")
+        return "Hello there, this is {this.name}!"
 
-(new Babe()).hello()
+console.log((new Toy()).hello())
 </script>
 ```
+
+## Notes
+
+Now under development

@@ -1,17 +1,17 @@
 #!/usr/bin/python
 
-module = 'babe'
+module = 'toy'
 input_path = 'src/'
-output_path = 'build/babe.js'
-output_node_path = 'build/node-babe.js'
+output_path = 'build/toyscript.js'
+output_node_path = 'build/node-toyscript.js'
 
 import re, os, sys, time, tempfile
 
 header = '''/*
- * babe.js
- * https://github.com/after12am/babe
+ * toyscript.js
+ * https://github.com/after12am/toyscript
  *
- * Copyright 2013 Satoshi Okami
+ * Copyright 2013-2015 Satoshi Okami
  * Released under the MIT license
  */
 '''

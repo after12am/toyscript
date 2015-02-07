@@ -5,17 +5,17 @@
 <title></title>
 </head>
 <body>
-<script type="text/javascript" src="../build/babe.js"></script>
-<script type="text/babe" src="hello.babe"></script>
-<script type="text/babe">
+<script type="text/javascript" src="../build/toyscript.js"></script>
+<script type="text/toyscript" src="hello.typ"></script>
+<script type="text/toyscript">
 
-class Babe:
+class Toy:
     constructor():
-        this.name = 'babe.js'
+        this.name = 'toyscript'
     hello():
-        console.log("Hello there, this is {this.name}!")
+        return "Hello there, this is {this.name}!"
 
-(new Babe()).hello()
+console.log((new Toy()).hello())
 
 </script>
 </body>

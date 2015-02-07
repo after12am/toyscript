@@ -36,7 +36,7 @@ function complete() {
     var elements = document.getElementsByTagName('script');
     for (var i = 0; i < elements.length; i++) {
         var e = elements[i];
-        if (e.type && e.type.match('text/babe')) {
+        if (e.type && e.type.match('text/toyscript')) {
             if (code = e.innerHTML) exports.interpret(code);
             if (e.src) {
                 var xhr = new XMLHttpRequest();

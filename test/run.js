@@ -1,6 +1,6 @@
 var sprintf = require('sprintf').sprintf;
 var fs = require('fs');
-var babe = require('../build/node-babe');
+var toyscript = require('../build/node-toyscript');
 var colors = require('colors');
 
 colors.setTheme({
@@ -41,7 +41,7 @@ function run(test) {
     var code = m[2];
     
     try {
-        res = babe.compile(code);
+        res = toyscript.compile(code);
     } catch (e) {
         res = e.toString();
     }
@@ -62,7 +62,7 @@ function run(test) {
 console.log('\nrunning test...\n')
 
 fs.readdirSync('./').filter(function(f) {
-    return f.match(/^test\.(.+)\.babe$/);
+    return f.match(/^test\.(.+)\.typ$/);
 }).map(run);
 
 summary();
