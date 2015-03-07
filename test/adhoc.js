@@ -1,6 +1,6 @@
 var fs = require('fs');
 var toy = require('../build/node-toyscript');
-var source = fs.readFileSync('source.toyscript.js', 'utf8');
+var source = fs.readFileSync('source.tys', 'utf8');
 var nodes, script;
 
 try {

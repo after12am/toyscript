@@ -2,8 +2,7 @@
     "name": "toyscript.js",
     "version": "0.1.0",
     "devDependencies": {
-        "grunt-node-qunit": "*",
-        "qunit": "*",
-        "sprintf": "*"
+        "sprintf": "~0.1.1",
+        "colors": "~0.6.1"
     }
 }

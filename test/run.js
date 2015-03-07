@@ -19,22 +19,21 @@ colors.setTheme({
 var passed = [];
 var failed = [];
 
-//
-
 function summary() {
     var len = passed.length + failed.length;
     var format = passed.length === len ? "[%s/%s]".info : "[%s/%s]".error;
     console.log(sprintf("\n"+format, passed.length, len));
 }
 
-function run(test) {
+function run(testcase) {
     var no = passed.length + failed.length + 1;
     var res;
-    var data = fs.readFileSync(test, 'utf8');
+    var data = fs.readFileSync(testcase, 'utf8');
+    
     var m = data.match(/^\/\+\n([\s\S.]*)\n\+\/\n([\s\S.]*)/);
     if (!m) {
-        console.log(sprintf("%2s. %s => code not found".error, no, test));
-        failed.push(test);
+        console.log(sprintf("%2s. %s => code not found".error, no, testcase));
+        failed.push(testcase);
         return;
     }
     var expect = m[1];
@@ -47,24 +46,29 @@ function run(test) {
     }
     
     if (res === expect) {
-        console.log(sprintf("%2s. %s => success".verbose, no, test));
-        passed.push(test);
+        console.log(sprintf("%2s. %s => success".verbose, no, testcase));
+        passed.push(testcase);
     } else {
-        console.log(sprintf("%2s. %s => failure".error, no, test));
+        console.log(sprintf("%2s. %s => failure".error, no, testcase));
         console.log("\n============ expect ============".error);
         console.log(expect.toString().error);
         console.log("\n============ actual ============".error);
         console.log((res ? res : 'undefined').error, "\n");
-        failed.push(test);
+        failed.push(testcase);
+        throw "error has occured";
     }
 }
 
 console.log('\nrunning test...\n')
 
-fs.readdirSync('./').filter(function(f) {
-    return f.match(/^test\.(.+)\.typ$/);
+function accepts(filename) {
+    return filename.match(/^test\.(.+)\.tys$/);
+}
+
+fs.readdirSync('test/').filter(accepts).map(function(filename) {
+  return 'test/' + filename;
 }).map(run);
 
 summary();
 
-process.stdin.resume();
+// process.stdin.resume();
