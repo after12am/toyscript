@@ -15,9 +15,9 @@ Here is a quick example.
 <script type="text/toyscript">
 class Toy:
     constructor():
-        this.name = 'toyscript'
+        this.name = 'Toy'
     hello():
-        return "Hello there, this is {this.name}!"
+        return "Hello there, I am {this.name}!"
 
 console.log((new Toy()).hello())
 </script>
