@@ -1,4 +1,4 @@
-toyscript
+<img src='https://cloud.githubusercontent.com/assets/678921/6637655/67d68d6e-c9c0-11e4-8569-f687fe67d9f8.png'>
 =========
 
 [![Build Status](https://travis-ci.org/after12am/toyscript.svg?branch=master)](https://travis-ci.org/after12am/toyscript)
