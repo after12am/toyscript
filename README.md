@@ -1,7 +1,7 @@
 toyscript
 =========
 
-toyscript is a small programing language works on your browser.
+A small experimental programing language works on your browser.
 
 
 ## example
