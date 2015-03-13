@@ -5,6 +5,7 @@
 <title></title>
 </head>
 <body>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 <script type="text/javascript" src="../build/toyscript.js"></script>
 <script type="text/toyscript" src="hello.tys"></script>
 <script type="text/toyscript">
@@ -15,7 +16,20 @@ class Toy:
     hello():
         return "Hello there, this is {this.name}!"
 
-console.log((new Toy()).hello())
+# console.log((new Toy()).hello())
+
+</script>
+<script type="text/javascript">
+
+var code = "(x): x * x";
+
+
+$(function() {
+    var compiled = toy.compile(code);
+    
+    $('body').text(compiled)
+    console.log(compiled)
+})
 
 </script>
 </body>

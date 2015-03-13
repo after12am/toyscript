@@ -4,4 +4,4 @@ class Toy:
     hello():
         return "Hello there, this is {this.name}!"
 
-console.log((new Toy()).hello())
+# console.log((new Toy()).hello())
