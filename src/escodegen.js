@@ -175,7 +175,9 @@ var escodegen = {};
             comment: false,
             format: {
                 indent: {
-                    style: '    ',
+                    // hacking for closure compiler
+                    // if represent indent using only whitespace, closure compiler compresses its string into ''.
+                    style: "\s\s\s\s".replace(/s/g, ' '),
                     base: 0,
                     adjustMultilineComment: false
                 },

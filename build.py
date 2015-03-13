@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+version = '0.1.1'
 module = 'toy'
 input_path = 'src/'
 output_path = 'build/toyscript.js'
@@ -8,7 +9,7 @@ output_node_path = 'build/node-toyscript.js'
 import re, os, sys, time, tempfile
 
 header = '''/*
- * toyscript.js
+ * toyscript.js v%s
  * https://github.com/after12am/toyscript
  *
  * Copyright 2013-2015 Satoshi Okami
@@ -54,13 +55,13 @@ def build():
     data = 'var %s = (function() {\nvar exports = {};\n\n' % module + compile(sources()) + '\nreturn exports;\n})();\n'
     if 'release' in sys.argv:
         data = release(data)
-    data = header + data
+    data = header % version + data
     open(output_path, 'w').write(data)
     print 'built %s (%u lines)' % (output_path, len(data.split('\n')))
     data = 'module.exports = (function() {\nvar exports = {};\n\n' + compile(sources()) + '\nreturn exports;\n})();\n'
     if 'release' in sys.argv:
         data = release(data)
-    data = header + data
+    data = header % version + data
     open(output_node_path, 'w').write(data)
     print 'built %s (%u lines)' % (output_node_path, len(data.split('\n')))
 
