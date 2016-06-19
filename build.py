@@ -12,7 +12,7 @@ header = '''/*
  * toyscript.js v%s
  * https://github.com/after12am/toyscript
  *
- * Copyright 2013-2015 Satoshi Okami
+ * Copyright 2013-2016 Satoshi Okami
  * Released under the MIT license
  */
 '''
