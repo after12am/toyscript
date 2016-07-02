@@ -1,12 +1,15 @@
 language: node_js
 node_js:
-  - "6"
-  - "5"
-  - "4"
-  - "0.12"
-  - "0.11"
-  - "0.10"
+  - '6'
+  - '5'
+  - '4'
+  - '0.12'
+  - '0.11'
+  - '0.10'
 before_script:
   - npm install
 script:
   - npm run test
+notifications:
+  slack:
+    secure: j8+gHL4BSV/GXgilY9UoXJNWYLiwMa8CyCp240a3qfVpSoQf1nCu/usolQfA5GeNATisko6DnyelGyg27fwmgOAfEM77W0hER1GfUed9KKE9qYt0bzBn9eubsNR0rUNlR0Y90LZSJFtOECXyw1/2S3Ar9PvDDIf/1JtQIZculVY=
