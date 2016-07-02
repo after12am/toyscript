@@ -1,36 +1,36 @@
 ToyScript
 =========
 
-[![Build Status](https://travis-ci.org/after12am/toyscript.svg?branch=master)](https://travis-ci.org/after12am/toyscript)
-
 A small experimental programing language works on your browser.
 
+## assign
 
-## example
+## call
 
-Here is the quick example.
+## binary.ope
+## comma.ope
+## equality.ope
+## relational.ope
+## cond.ope
+## new.ope
+## unary.ope
 
-```html
-<script type="text/javascript" src="toyscript.js"></script>
-<script type="text/toyscript">
+## comment
+## member
+## primary
+## type
 
-class Bot:
-  constructor():
-    this.name = 'ToyScript'
-  hello():
-    return "Hello there, I'm {this.name}!"
+## lambda
+## def
+## class
 
-console.log((new Bot()).hello())
+## empty
 
-</script>
-```
+## forIn
+## while
 
-Result:
-
-```
-Hello there, I'm ToyScript!
-```
-
-## License
-
-Copyright (c) 2012-2016 Satoshi Okami. See the LICENSE file for license rights and limitations (MIT).
+## if
+## pass
+## raise
+## return
+## try
