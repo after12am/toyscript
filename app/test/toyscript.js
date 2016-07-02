@@ -1,0 +1,1 @@
+../../build/toyscript.js

@@ -3,10 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <title></title>
+<style media="screen">
+pre {
+  background-color: #f1f1f1;
+  padding: 16px;
+}
+</style>
 </head>
 <body>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
-<script type="text/javascript" src="../build/toyscript.js"></script>
+<pre></pre>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script type="text/javascript" src="toyscript.js"></script>
 <script type="text/toyscript" src="hello.tys"></script>
 <script type="text/toyscript">
 
@@ -21,13 +28,12 @@ class Toy:
 </script>
 <script type="text/javascript">
 
-var code = "(x): x * x";
-
+var code = "x: x * x";
 
 $(function() {
     var compiled = toy.compile(code);
-    
-    $('body').text(compiled)
+
+    $('pre').text(compiled)
     console.log(compiled)
 })
 

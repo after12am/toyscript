@@ -8,4 +8,4 @@ node_js:
 before_script:
   - npm install
 script:
-  - node test/run.js
+  - npm run test

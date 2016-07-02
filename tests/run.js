@@ -65,8 +65,8 @@ function accepts(filename) {
     return filename.match(/^test\.(.+)\.tys$/);
 }
 
-fs.readdirSync('test/').filter(accepts).map(function(filename) {
-  return 'test/' + filename;
+fs.readdirSync('tests/').filter(accepts).map(function(filename) {
+  return 'tests/' + filename;
 }).map(run);
 
 summary();
