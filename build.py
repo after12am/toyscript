@@ -1,12 +1,12 @@
 #!/usr/bin/python
 
-version = '0.1.1'
+import re, os, sys, time, tempfile, yaml
+
+version = yaml.load(open('package.json').read()).get('version')
 module = 'toy'
 input_path = 'src/'
 output_path = 'build/toyscript.js'
 output_node_path = 'build/node-toyscript.js'
-
-import re, os, sys, time, tempfile
 
 header = '''/*
  * toyscript.js v%s
