@@ -3,7 +3,7 @@ toyscript
 
 [![Build Status](https://travis-ci.org/after12am/toyscript.svg?branch=master)](https://travis-ci.org/after12am/toyscript)
 
-A small experimental programing language works on your browser.
+A small experimental programing language for pythonian works on your browser.
 
 
 ## Example
